@@ -28,10 +28,11 @@
 
     * recursion schemes - no clear recursive types here
 
-    * more use of type variables could make sense and should be fun
-      e.g. HKD pattern 'data Board f = Board [(Piece, f Position)]'
-      or making Position or Direction a type 'data Board a = Board [(Piece, a)]' yielding some Functor instances 
-      (I will try to give it a go if I find some time) 
+    * more use of type variables?
+      e.g. HKD pattern 'data Board f = Board [(Piece, f Position)]' - but that would require some generic 
+      library to be beneficial and with Chess seems not that relevant.
+      Or making Position or Direction into a type variable like 'data Board a = Board [(Piece, a)]' 
+      Functor here does not seem useful for game implementation.
 
     * Free DSL approach also could be considered, but the challenge I am interested in solving is a cleaner
       decoupling of global board state and that needs to be handled anyway somewhere, not clear how a DSL would
@@ -68,7 +69,7 @@ game piece@(Piece _ dir) old new (Game gdir board) =
         Just err -> Left err
         Nothing -> Right $ Game (otherDir gdir) newBoard
 
--- | possibly, easier to use version of game        
+-- | possibly, easier to use version of game       
 game' :: Position -> Position -> Game -> Either ChessErr Game  
 game' old new g@(Game _ board) = case L.find ((== Just old) . snd) board of 
     Nothing -> Left $ InvalidOldPosition old 
@@ -141,7 +142,7 @@ data Piece = Piece {
   } deriving (Eq, Show) 
 
 -- | Contains all player pieces, if offboard Position is Nothing  
--- case for unifying Board and OnBoard under single Functor 'Board a = Board [(Piece, a)]'
+-- case for unifying Board and OnBoard under something like 'Board a = Board [(Piece, a)]'
 type Board = [(Piece, Maybe Position)] 
 type OnBoard = [(Piece, Position)] 
 
