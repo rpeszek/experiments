@@ -1,4 +1,6 @@
 .stack-work/
-experiments.cabal
+*.cabal
 *~
 .history/
+temp/
+Temp*.hs
