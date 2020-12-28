@@ -40,3 +40,11 @@ mapObjects fn = cata (ext fn)
        ext fn (ObjectF o) = A.Object $ fn o 
        ext _ x = embed x
 
+
+
+type JSONKey = T.Text
+
+mapWithKeys :: (JSONKey -> A.Value -> A.Value) -> A.Value -> A.Value
+mapWithKeys fn = mapObjects (HM.mapWithKey fn)
+
+
