@@ -24,8 +24,11 @@ dependencies:
 - aeson
 - recursion-schemes
 - data-fix
+- free
 - unordered-containers
 - text
+- vector
+- comonad
 
 # TODO move to doctest
 - time
