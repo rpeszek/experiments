@@ -105,14 +105,14 @@ emplP =
 -- |
 -- ErrWarn outputs 
 --
--- >>> emplP' "id last-first-name dept boss1"
--- EW {runEW = Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})}
+-- >>> runEW $ emplP' "id last-first-name dept boss1"
+-- Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
 --
--- >>> emplP' "id last-firs-name dept boss2"
--- EW {runEW = Left ["\"last-first-name\": not enough input","Failed reading: first-last-name not implemented yet"]}
+-- >>> runEW $ emplP' "id last-firs-name dept boss2"
+-- Left ["\"last-first-name\": not enough input","Failed reading: first-last-name not implemented yet"]
 --
--- >>> emplP' "id last-first-name dept boss"
--- EW {runEW = Right (["\"boss1\": not enough input","\"boss2\": not enough input"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})}
+-- >>> runEW $ emplP' "id last-first-name dept boss"
+-- Right (["\"boss1\": not enough input","\"boss2\": not enough input"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
 emplP' :: B.ByteString -> ErrWarn [String] [String] Employee
 emplP' txt = 
    Employee 
