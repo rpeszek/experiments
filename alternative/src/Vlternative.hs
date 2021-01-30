@@ -11,6 +11,7 @@
 module Vlternative where
 
 import Instances
+import Instances.REW
 
 
 -- |
@@ -59,3 +60,21 @@ instance Monoid e => Vlternative e (ErrWarn e) where
     toSuccess (EW (Right (e, r))) = EW $ Right (mempty, Just r)
     toSuccess (EW (Left e)) = EW $ Right (mempty, Nothing)
     
+instance (Monoid e) => Vlternative e (RdrWarnErr r e) where 
+    failure e = REW . const $ Left e
+    REW f <-> REW g = REW (\r ->
+             case (f r, g r) of 
+                (Left e1, Left e2) -> Left $ e1 <> e2
+                (Left e1, Right (w2, x)) -> Right (e1 <> w2, x)
+                (l@(Right _), _) -> l
+          )
+    toWarnings (REW f) = REW (\r -> 
+            case f r of 
+              Right (e, r) ->  Right (mempty, e)
+              Left e ->  Right (mempty, e)
+            )
+    toSuccess (REW f) = REW (\r ->
+            case f r of 
+               Right (e, r) -> Right (mempty, Just r)
+               Left e -> Right (mempty, Nothing)
+         )
