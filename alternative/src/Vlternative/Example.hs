@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Vlternative.Example where
 
 import Vlternative
