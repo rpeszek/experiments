@@ -6,9 +6,10 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Instances.REW where
+module Alternative.Instances.REW where
 
 import Control.Applicative 
+
 
 
 -- conceptual prototype, could be useful, e.g. naturally transforms from to aeson like parsers
@@ -26,6 +27,18 @@ instance (Monoid w) => Applicative (RdrWarnErr r e w) where
        -- where 
            -- x = f `asTypeOf` _ -- r -> Either e (w, a -> b)
            -- y = g `asTypeOf` _    --  r -> Either e (w, a)
+
+instance (Monoid w) => Monad (RdrWarnErr r e w) where   
+     (REW f) >>= k = REW (\r ->
+           case f r of 
+              Left e -> Left e
+              Right (u, x) -> 
+                    let REW h = k x
+                    in case h r of 
+                            Right (v, b) -> Right (u <> v, b)
+                            Left e -> Left e
+        )
+
 
 instance (Monoid e) => Alternative (RdrWarnErr r e e) where 
     empty  = REW . const $ Left mempty
