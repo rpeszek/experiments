@@ -18,25 +18,29 @@ import Instances.REW
 -- Alternative with A upside down.
 --
 -- laws: 
+--
 -- toWarnings . failure e = pure e
 -- toSuccess . pure e = Just <$> pure e
 -- toSuccess . failure e = pure Nothing
 --
--- x <-> y = y if   isJust <$> toSuccess x = pure True  -- (1 gen zero)
--- x <-> y = x if   isJust <$> toSuccess x = pure True  -- (2 gen zero)
+-- x <-> y = y   if   isNothing <$> toSuccess x = pure True  -- (1 failing x)
+-- x <-> y = x   if   isJust <$> toSuccess x = pure True     -- (2 non-failing x)
+--
 --
 -- u <-> (v <-> w)  =  (u <-> v) <-> w           -- (3)
 --
--- toSuccess $ f <*> failure e = pure Nothing   -- (4 gen right zero)
--- (pure a) <-> x = pure a                      -- (7 left catch) 
+-- toSuccess (f <*> failure e) = pure Nothing   -- (4 gen right zero)
 --
--- toSuccess $ (a <-> b) <*> c = toSuccess $ (a <*> c) <-> (b <*> c)  -- (5) Left Distribution
--- toSuccess $ a <*> (b <|> c) = toSuccess $ (a <*> b) <|> (a <*> c)  -- (6) Right Distribution  
+-- toSuccess ((a <-> b) <*> c) = toSuccess ((a <*> c) <-> (b <*> c))  -- (5) Left Distribution
+-- toSuccess (a <*> (b <|> c)) = toSuccess ((a <*> b) <|> (a <*> c))  -- (6) Right Distribution  
+--
+-- (pure a) <-> x = pure a                      -- (7 left catch) 
 --
 -- possible enhancements:
 -- mapping over e. 
 --     mapping over e accumulated in a successful computation @x :: f e a@ (toSuccess x != pure Nothing) 
 --     mapping e in a failed computation @x :: f e a@ (toSuccess x = pure Nothing) 
+--
 class (Monoid e, Applicative (f e)) => Vlternative e f where
     failure     :: e -> f e a  -- name fail is taken, should terminate applicative, monad
     (<->)       :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
