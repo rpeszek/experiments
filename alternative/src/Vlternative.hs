@@ -28,31 +28,36 @@ import Alternative.Instances.REW
 -- empty = failure mempty
 -- <|>   = <->
 -- 
--- laws: 
---
--- recoverWarnings . failure e = pure e
--- recoverResult . pure a = Right <$> pure a
--- recoverResult . failure e = fmap (const (Left e)) (pure ())
---
--- x <-> y = y   if   isSuccess x = pure False  -- (1 failing x)
--- x <-> y = x   if   isSuccess x = pure True   -- (2 non-failing x)
+-- laws: (TODO type check, verify these)
+-- @
+-- recover (failure e) = pure (e, Nothing)
+-- recover (pure a) = pure (mempty, Just a)
+-- recover (failure e <-> pure a) = pure (e, Just a)
+-- recover (pure a <-> failure e) = recover (pure a) = pure (mempty, Just a)
 --
 --
--- u <-> (v <-> w)  =  (u <-> v) <-> w           -- (3)
---
--- isSuccess (f <*> failure e) = pure False   -- (4 gen right zero)
---
--- recoverResultMaybe ((a <-> b) <*> c) = recoverResultMaybe ((a <*> c) <-> (b <*> c))  -- (5) Left Distribution
--- recoverResultMaybe (a <*> (b <|> c)) = recoverResultMaybe ((a <*> b) <|> (a <*> c))  -- (6) Right Distribution  
---
+-- x ?= y iff recoverResultMaybe x = recoverResultMaybe y
 --       where recoverResultMaybe = either Nothing Just . recoverResult
 --
--- (pure a) <-> x = pure a                      -- (7 left catch) 
+-- (failure e) <-> y ?=  y   
+-- x <-> (failure e) ?= x   
+-- u <-> (v <-> w)  =  (u <-> v) <-> w           -- (3)
+--
+-- f <*> failure e ?= failure e                   -- (4 gen right zero)
+--
+-- (a <-> b) <*> c  ?= (a <*> c) <-> (b <*> c)    -- (5) Left Distribution
+-- (a <*> (b <|> c)) ?= (a <*> b) <|> (a <*> c)   -- (6) Right Distribution  
+--
+--
+-- (pure a) <-> x = pure a                         -- (7 left catch) 
+-- @
 --
 -- possible enhancements:
+--
 -- mapping over e. 
---     mapping over e accumulated in a successful computation @x :: f e a@ (toSuccess x != pure Nothing) 
---     mapping e in a failed computation @x :: f e a@ (toSuccess x = pure Nothing) 
+--
+--   *  mapping over e accumulated in a successful computation @x :: f e a@ (isSuccess x = pure True) 
+--   *  mapping e in a failed computation @x :: f e a@ (toSuccess x = pure False) 
 --
 class (Monoid e, Applicative (f e)) => Vlternative e f where
     failure :: e -> f e a  -- name fail is taken, should terminate applicative, monad
@@ -92,7 +97,7 @@ newtype Trivial f e a = Trivial (f a) deriving (Show, Eq, Functor, Applicative)
 instance (Monoid e, Alternative f) => Vlternative e (Trivial f) where
     failure _ = Trivial empty
     Trivial a <-> Trivial b = Trivial (a <|> b)
-    recover (Trivial f) = Trivial empty
+    recover (Trivial f) = Trivial empty -- problem, it fails on recover
 
 -- instance (Applicative f) => Applicative (Trivial f e) where
 
