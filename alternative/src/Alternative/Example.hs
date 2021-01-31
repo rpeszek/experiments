@@ -6,7 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Example where
+module Alternative.Example where
 
 import qualified Data.ByteString as B
 import qualified Data.Attoparsec.ByteString as A
@@ -16,8 +16,8 @@ import qualified Data.Attoparsec.ByteString.Char8 as ACh
 import Control.Applicative 
 
 
-import Instances
-import Instances.REW 
+import Alternative.Instances.ErrWarn
+import Alternative.Instances.REW 
 
 -- $setup
 -- >>> :set -XOverloadedStrings

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Laws where
+module Alternative.Laws where
 
 import qualified Data.Attoparsec.ByteString as A
 import Control.Applicative 

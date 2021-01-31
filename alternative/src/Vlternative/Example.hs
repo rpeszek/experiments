@@ -2,9 +2,9 @@
 module Vlternative.Example where
 
 import Vlternative
-import Instances
-import Instances.REW
-import Example
+import Alternative.Instances.ErrWarn
+import Alternative.Instances.REW
+import Alternative.Example
 
 import qualified Data.ByteString as B
 import qualified Data.Attoparsec.ByteString as A
@@ -59,7 +59,7 @@ testV = do
         id <- rew OtherErr idP
         let rewNm = rew Name1Err nameP1 <-> rew Name2Err nameP2'
         nm <- rewNm
-        wrn <- toWarnings $ rewNm
+        wrn <- recoverWarnings $ rewNm
         -- nameP1 errors go with boss2, rest with boss1 or boss3
         dep <- rew OtherErr deptP
         boss <- if L.any isName1Err wrn

@@ -6,7 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Instances.REW where
+module Alternative.Instances.REW where
 
 import Control.Applicative 
 

@@ -10,29 +10,40 @@
 -- exposes error semantics
 module Vlternative where
 
-import Instances
-import Instances.REW
+import Alternative.Instances.ErrWarn
+import Alternative.Instances.REW
 
 
 -- |
 -- Alternative with A upside down.
 --
+-- Represents `Alternative` with a specified failure monoid type  
+-- and abitily to recover from failure  
+-- instance has ability to accumulate errors as warnings.
+--
+-- translations:
+--
+-- empty = failure mempty
+-- <|>   = <->
+-- 
 -- laws: 
 --
--- toWarnings . failure e = pure e
--- toSuccess . pure e = Just <$> pure e
--- toSuccess . failure e = pure Nothing
+-- recoverWarnings . failure e = pure e
+-- recoverResult . pure a = Right <$> pure a
+-- recoverResult . failure e = fmap (const (Left e)) (pure ())
 --
--- x <-> y = y   if   isNothing <$> toSuccess x = pure True  -- (1 failing x)
--- x <-> y = x   if   isJust <$> toSuccess x = pure True     -- (2 non-failing x)
+-- x <-> y = y   if   isSuccess x = pure False  -- (1 failing x)
+-- x <-> y = x   if   isSuccess x = pure True   -- (2 non-failing x)
 --
 --
 -- u <-> (v <-> w)  =  (u <-> v) <-> w           -- (3)
 --
--- toSuccess (f <*> failure e) = pure Nothing   -- (4 gen right zero)
+-- isSuccess (f <*> failure e) = pure False   -- (4 gen right zero)
 --
--- toSuccess ((a <-> b) <*> c) = toSuccess ((a <*> c) <-> (b <*> c))  -- (5) Left Distribution
--- toSuccess (a <*> (b <|> c)) = toSuccess ((a <*> b) <|> (a <*> c))  -- (6) Right Distribution  
+-- recoverResultMaybe ((a <-> b) <*> c) = recoverResultMaybe ((a <*> c) <-> (b <*> c))  -- (5) Left Distribution
+-- recoverResultMaybe (a <*> (b <|> c)) = recoverResultMaybe ((a <*> b) <|> (a <*> c))  -- (6) Right Distribution  
+--
+--       where recoverResultMaybe = either Nothing Just . recoverResult
 --
 -- (pure a) <-> x = pure a                      -- (7 left catch) 
 --
@@ -44,14 +55,27 @@ import Instances.REW
 class (Monoid e, Applicative (f e)) => Vlternative e f where
     failure     :: e -> f e a  -- name fail is taken, should terminate applicative, monad
     (<->)       :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
-    toWarnings :: f e a -> f e e -- returns accumulated failures, converts to non-failing with no accumulation
-    toSuccess  :: f e a -> f e (Maybe a) -- returns success if present, converts to non-failing with no accumulation
+    recover :: f e a -> f e (e, Maybe a) -- returns accumulated failures, converts to non-failing with no accumulation
                                 
      
 warn :: forall e f a. Vlternative e f => e -> f e a -> f e a
 warn er a = failure er <-> a 
 
+recoverWarnings :: forall e f a. Vlternative e f => f e a -> f e e
+recoverWarnings = fmap fst . recover
 
+-- | this loses warnings!
+recoverResult :: forall e f a. Vlternative e f => f e a -> f e (Either e a)
+recoverResult = fmap cnrt . recover
+    where
+        cnrt :: (e, Maybe a) -> Either e a
+        cnrt (_, Just r) = Right r  -- information loss
+        cnrt (e, Nothing) = Left e
+
+-- | 
+-- needed for the laws
+isSuccess :: forall e f a. Vlternative e f => f e a -> f e Bool
+isSuccess = fmap (either (const False) (const True)) . recoverResult
 
 -- newtype ErrWarn e w a = EW {runEW :: Either e (w, a)}
 
@@ -62,11 +86,9 @@ instance Monoid e => Vlternative e (ErrWarn e) where
     EW (Left e1) <-> EW (Right (w2, r)) = EW $ Right (e1 <> w2, r)
     l@(EW (Right _)) <-> _ = l
 
-    toWarnings (EW (Right (e, r))) = EW $ Right (mempty, e)
-    toWarnings (EW (Left e)) = EW $  Right (mempty, e)
+    recover (EW (Right (e, r))) = EW $ Right (mempty, (e, Just r))
+    recover (EW (Left e)) = EW $  Right (mempty, (e, Nothing))
 
-    toSuccess (EW (Right (e, r))) = EW $ Right (mempty, Just r)
-    toSuccess (EW (Left e)) = EW $ Right (mempty, Nothing)
     
 instance (Monoid e) => Vlternative e (RdrWarnErr r e) where 
     failure e = REW . const $ Left e
@@ -76,13 +98,9 @@ instance (Monoid e) => Vlternative e (RdrWarnErr r e) where
                 (Left e1, Right (w2, x)) -> Right (e1 <> w2, x)
                 (l@(Right _), _) -> l
           )
-    toWarnings (REW f) = REW (\r -> 
+    recover (REW f) = REW (\r -> 
             case f r of 
-              Right (e, r) ->  Right (mempty, e)
-              Left e ->  Right (mempty, e)
+              Right (e, r) ->  Right (mempty, (e, Just r))
+              Left e ->  Right (mempty, (e, Nothing))
             )
-    toSuccess (REW f) = REW (\r ->
-            case f r of 
-               Right (e, r) -> Right (mempty, Just r)
-               Left e -> Right (mempty, Nothing)
-         )
+

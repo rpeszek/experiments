@@ -6,7 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Instances where
+module Alternative.Instances.ErrWarn where
 
 import Control.Applicative 
 import Control.Monad
