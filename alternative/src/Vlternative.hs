@@ -1,8 +1,9 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
--- {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 -- | 
 -- Experiments with possible alternatives to `Alternative`
@@ -10,6 +11,7 @@
 -- exposes error semantics
 module Vlternative where
 
+import Control.Applicative
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
 
@@ -53,8 +55,8 @@ import Alternative.Instances.REW
 --     mapping e in a failed computation @x :: f e a@ (toSuccess x = pure Nothing) 
 --
 class (Monoid e, Applicative (f e)) => Vlternative e f where
-    failure     :: e -> f e a  -- name fail is taken, should terminate applicative, monad
-    (<->)       :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
+    failure :: e -> f e a  -- name fail is taken, should terminate applicative, monad
+    (<->)   :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
     recover :: f e a -> f e (e, Maybe a) -- returns accumulated failures, converts to non-failing with no accumulation
                                 
      
@@ -77,7 +79,23 @@ recoverResult = fmap cnrt . recover
 isSuccess :: forall e f a. Vlternative e f => f e a -> f e Bool
 isSuccess = fmap (either (const False) (const True)) . recoverResult
 
--- newtype ErrWarn e w a = EW {runEW :: Either e (w, a)}
+
+-- * instances
+
+-- |
+-- For documentation, probably should not be used.
+newtype Trivial f e a = Trivial (f a) deriving (Show, Eq, Functor, Applicative)
+
+-- |
+-- For documentation, probably should not be used.
+-- questionable @recovery@
+instance (Monoid e, Alternative f) => Vlternative e (Trivial f) where
+    failure _ = Trivial empty
+    Trivial a <-> Trivial b = Trivial (a <|> b)
+    recover (Trivial f) = Trivial empty
+
+-- instance (Applicative f) => Applicative (Trivial f e) where
+
 
 instance Monoid e => Vlternative e (ErrWarn e) where
     failure e = EW $ Left e
