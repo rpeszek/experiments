@@ -14,6 +14,7 @@ module Vlternative where
 import Control.Applicative
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
+import Alternative.Instances.Annotate
 import Data.Functor.Classes
 
 
@@ -105,39 +106,32 @@ isSuccess = fmap (either (const False) (const True)) . recoverResult
 
 -- * instances
 
--- |
--- For documentation, probably should not be used.
-data Trivial f e a = Trivial e (f a) deriving (Show, Eq, Functor)
-
-instance (Applicative f, Monoid e) => Applicative (Trivial f e) where
-    pure a = Trivial mempty (pure a)
-    (Trivial _ a1) <*> (Trivial _ a2) = Trivial mempty (a1 <*> a2) -- fmap (Trivial mempty) (a1 <*> a2)
-
 
 -- |
--- For documentation only, probably should not be used.
--- no way to do @recovery@, this does not recover from failure (empty)
+-- Use Alternative with static errors as Vlternative
 --
--- >>> recover (Trivial "boo" $ Just 1)
--- Trivial "" (Just ("boo",Just 1))
--- >>> recover (Trivial "boo" $ Nothing)
--- Trivial "" Nothing
--- >>> recover ((Trivial "boo1" $ Nothing) <-> (Trivial "" $ Just 1))
--- Trivial "" (Just ("boo1",Just 1))
-instance (Monoid e, Eq e, Eq1 f, Alternative f) => Vlternative e (Trivial f) where
-    failure e = Trivial e empty
-    Trivial e1 a <-> Trivial e2 b = 
-        if which `eq1` pure e1
-        then Trivial e1 res
-        else Trivial (e1 <> e2) res
+-- >>> recover (Annotate "boo" $ Just 1)
+-- Annotate "" (Just ("boo",Just 1))
+-- >>> recover (Annotate "boo" $ Nothing)
+-- Annotate "" (Just ("boo",Nothing))
+-- >>> recover ((Annotate "boo" $ Nothing) <-> (Annotate "" $ Just 1))
+-- Annotate "" (Just ("boo",Just 1))
+-- >>> recover ((Annotate "foo" $ Nothing) <-> (Annotate "bar" $ Nothing))
+-- Annotate "" (Just ("foobar",Nothing))
+instance (Monoid e,  Eq1 f, Alternative f) => Vlternative e (Annotate f) where
+    failure e = Annotate e empty
+    Annotate e1 a <-> Annotate e2 b = 
+        if which `eq1` pure True
+        then Annotate e1 res
+        else Annotate (e1 <> e2) res
        where 
-           r  = ((e1,) <$> a) <|> ((e2,) <$> b)
+           r  = ((True,) <$> a) <|> ((False,) <$> b)
            which = fst <$> r
            res = snd <$> r
-    recover (Trivial e fa) =
+    recover (Annotate e fa) =
          if succ `eq1` pure ()
-         then Trivial mempty $ fmap ((e,) . Just) fa
-         else Trivial mempty $ fmap (const (e, Nothing)) fa
+         then Annotate mempty $ fmap ((e,) . Just) fa
+         else Annotate mempty $ pure (e, Nothing)
        where 
            r = ((),) <$> fa
            succ = fst <$> r
