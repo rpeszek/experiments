@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | 
 -- Experiments with possible alternatives to `Alternative`
@@ -14,6 +15,7 @@ module Vlternative where
 import Control.Applicative
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
+import Data.Functor.Classes
 
 
 -- |
@@ -106,17 +108,40 @@ isSuccess = fmap (either (const False) (const True)) . recoverResult
 
 -- |
 -- For documentation, probably should not be used.
-newtype Trivial f e a = Trivial (f a) deriving (Show, Eq, Functor, Applicative)
+data Trivial f e a = Trivial e (f a) deriving (Show, Eq, Functor)
+
+instance (Applicative f, Monoid e) => Applicative (Trivial f e) where
+    pure a = Trivial mempty (pure a)
+    (Trivial _ a1) <*> (Trivial _ a2) = Trivial mempty (a1 <*> a2) -- fmap (Trivial mempty) (a1 <*> a2)
+
 
 -- |
--- For documentation, probably should not be used.
--- questionable @recovery@
-instance (Monoid e, Alternative f) => Vlternative e (Trivial f) where
-    failure _ = Trivial empty
-    Trivial a <-> Trivial b = Trivial (a <|> b)
-    recover (Trivial f) = Trivial empty -- problem, it fails on recover
-
--- instance (Applicative f) => Applicative (Trivial f e) where
+-- For documentation only, probably should not be used.
+-- no way to do @recovery@, this does not recover from failure (empty)
+--
+-- >>> recover (Trivial "boo" $ Just 1)
+-- Trivial "" (Just ("boo",Just 1))
+-- >>> recover (Trivial "boo" $ Nothing)
+-- Trivial "" Nothing
+-- >>> recover ((Trivial "boo1" $ Nothing) <-> (Trivial "" $ Just 1))
+-- Trivial "" (Just ("boo1",Just 1))
+instance (Monoid e, Eq e, Eq1 f, Alternative f) => Vlternative e (Trivial f) where
+    failure e = Trivial e empty
+    Trivial e1 a <-> Trivial e2 b = 
+        if which `eq1` pure e1
+        then Trivial e1 res
+        else Trivial (e1 <> e2) res
+       where 
+           r  = ((e1,) <$> a) <|> ((e2,) <$> b)
+           which = fst <$> r
+           res = snd <$> r
+    recover (Trivial e fa) =
+         if succ `eq1` pure ()
+         then Trivial mempty $ fmap ((e,) . Just) fa
+         else Trivial mempty $ fmap (const (e, Nothing)) fa
+       where 
+           r = ((),) <$> fa
+           succ = fst <$> r
 
 
 instance Monoid e => Vlternative e (ErrWarn e) where
