@@ -30,11 +30,25 @@ import Alternative.Instances.REW
 -- 
 -- laws: (TODO type check, verify these)
 -- @
+--
+-- without critical errors:
+--
 -- recover (failure e) = pure (e, Nothing)
 -- recover (pure a) = pure (mempty, Just a)
 -- recover (failure e <-> pure a) = pure (e, Just a)
 -- recover (pure a <-> failure e) = recover (pure a) = pure (mempty, Just a)
 --
+-- ?? (thinking about it) considering critial errors:
+--
+-- recover (pure a) = pure (mempty, Just a)
+-- recover (failure mempty) = pure (e, Nothing)  - ?? can mempty be critical? probably not
+-- recover (failure e) = 
+--           pure (e, Nothing) -- non-critical
+--           failure ? -- critical (or @failure mempty@ or @failure e@? - ?? probably @failure mempty@ allowing to catch critical)
+-- recover (failure e <-> pure a) = 
+--           pure (e, Just a)  -- non-critical
+--           failure ?  -- critical
+-- recover (pure a <-> failure e) = recover (pure a) = pure (mempty, Just a)
 --
 -- x ?= y iff recoverResultMaybe x = recoverResultMaybe y
 --       where recoverResultMaybe = either Nothing Just . recoverResult
@@ -62,9 +76,12 @@ import Alternative.Instances.REW
 class (Monoid e, Applicative (f e)) => Vlternative e f where
     failure :: e -> f e a  -- name fail is taken, should terminate applicative, monad
     (<->)   :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
-    recover :: f e a -> f e (e, Maybe a) -- returns accumulated failures, converts to non-failing with no accumulation
+    recover :: f e a -> f e (e, Maybe a) 
+    -- ^ if error is recoverable, @recover@ converts to a non-failing  @f e@  with no error accumulation
+    -- if @Maybe a = Nothing@ then @e@ returns recovered error
+    -- if @Maybe a = Just _@ then @e@ returns accumulated warninging
                                 
-     
+                        
 warn :: forall e f a. Vlternative e f => e -> f e a -> f e a
 warn er a = failure er <-> a 
 
