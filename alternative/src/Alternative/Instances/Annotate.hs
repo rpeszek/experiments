@@ -39,7 +39,7 @@ instance (Monoid e,  Eq1 f, Alternative f) => Alternative (Annotate f e) where
 -- Just ("boo",Just 1)
 -- >>> check ((Annotate "foo" $ Nothing) <|> (Annotate "bar" $ Nothing))
 -- Just ("foobar",Nothing)
-check :: (Eq1 f, Applicative f, Monoid e, Eq e) =>
+check :: (Eq1 f, Applicative f, Monoid e) =>
        Annotate f e b -> f (e, Maybe b)
 check (Annotate e fa) =
         if succ `eq1` pure ()
