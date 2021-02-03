@@ -18,6 +18,7 @@ import Control.Applicative
 
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW 
+import Alternative.Instances.Annotate
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -119,3 +120,24 @@ emplP'' =
         singleErr (Left e) =  Left [e]
         singleErr (Right r) = Right ([], r)
 
+-- |
+-- Annotate outputs to see which failed
+--
+-- >>> check . emplAnn $ "id last-first-name dept boss1"
+-- Just ([],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
+--
+-- >>> check . emplAnn $ "id last-firs-name dept boss2"
+-- Just (["nameP1","nameP2","bossP1"],Nothing)
+--
+-- >>> check . emplAnn $ "id last-first-name dept boss"
+-- Just (["bossP1","bossP2"],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"}))
+emplAnn ::  B.ByteString -> Annotate Maybe [String] Employee
+emplAnn txt = 
+   Employee 
+   <$> annotate ["idP"] (mb idP)
+   <*> (annotate ["nameP1"] (mb nameP1) <|> annotate ["nameP2"] (mb nameP2))
+   <*> annotate ["deptP"] (mb deptP)
+   <*> (annotate ["bossP1"] (mb bossP1) <|> annotate ["bossP2"] (mb bossP2) <|> annotate ["bossP3"] (mb bossP3))  
+   where 
+     mb :: AT.Parser B.ByteString a -> Maybe a
+     mb p = either (const Nothing) Just $ A.parseOnly p txt

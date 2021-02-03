@@ -1,9 +1,9 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | 
 -- Experiments with possible alternatives to `Alternative`
@@ -14,6 +14,8 @@ module Vlternative where
 import Control.Applicative
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
+import Alternative.Instances.Annotate
+import Data.Functor.Classes
 
 
 -- |
@@ -30,11 +32,25 @@ import Alternative.Instances.REW
 -- 
 -- laws: (TODO type check, verify these)
 -- @
+--
+-- without critical errors:
+--
 -- recover (failure e) = pure (e, Nothing)
 -- recover (pure a) = pure (mempty, Just a)
 -- recover (failure e <-> pure a) = pure (e, Just a)
 -- recover (pure a <-> failure e) = recover (pure a) = pure (mempty, Just a)
 --
+-- ?? (thinking about it) considering critial errors:
+--
+-- recover (pure a) = pure (mempty, Just a)
+-- recover (failure mempty) = pure (e, Nothing)  - ?? can mempty be critical? probably not
+-- recover (failure e) = 
+--           pure (e, Nothing) -- non-critical
+--           failure ? -- critical (or @failure mempty@ or @failure e@? - ?? probably @failure mempty@ allowing to catch critical)
+-- recover (failure e <-> pure a) = 
+--           pure (e, Just a)  -- non-critical
+--           failure ?  -- critical
+-- recover (pure a <-> failure e) = recover (pure a) = pure (mempty, Just a)
 --
 -- x ?= y iff recoverResultMaybe x = recoverResultMaybe y
 --       where recoverResultMaybe = either Nothing Just . recoverResult
@@ -62,9 +78,12 @@ import Alternative.Instances.REW
 class (Monoid e, Applicative (f e)) => Vlternative e f where
     failure :: e -> f e a  -- name fail is taken, should terminate applicative, monad
     (<->)   :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
-    recover :: f e a -> f e (e, Maybe a) -- returns accumulated failures, converts to non-failing with no accumulation
+    recover :: f e a -> f e (e, Maybe a) 
+    -- ^ if error is recoverable, @recover@ converts to a non-failing  @f e@  with no error accumulation
+    -- if @Maybe a = Nothing@ then @e@ returns recovered error
+    -- if @Maybe a = Just _@ then @e@ returns accumulated warninging
                                 
-     
+                        
 warn :: forall e f a. Vlternative e f => e -> f e a -> f e a
 warn er a = failure er <-> a 
 
@@ -87,19 +106,22 @@ isSuccess = fmap (either (const False) (const True)) . recoverResult
 
 -- * instances
 
--- |
--- For documentation, probably should not be used.
-newtype Trivial f e a = Trivial (f a) deriving (Show, Eq, Functor, Applicative)
 
 -- |
--- For documentation, probably should not be used.
--- questionable @recovery@
-instance (Monoid e, Alternative f) => Vlternative e (Trivial f) where
-    failure _ = Trivial empty
-    Trivial a <-> Trivial b = Trivial (a <|> b)
-    recover (Trivial f) = Trivial empty -- problem, it fails on recover
-
--- instance (Applicative f) => Applicative (Trivial f e) where
+-- Extend Alternative with static errors to Vlternative
+--
+-- >>> recover (annotate "boo" $ Just 1)
+-- Annotate (Right "") (Just ("",Just 1))
+-- >>> recover (annotate "boo" $ Nothing)
+-- Annotate (Right "") (Just ("boo",Nothing))
+-- >>> recover ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
+-- Annotate (Right "") (Just ("boo",Just 1))
+-- >>> recover ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
+-- Annotate (Right "") (Just ("foobar",Nothing))
+instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annotate f) where
+    failure e = Annotate (Left e) noOpFail
+    a <-> b = a <|> b
+    recover a = Annotate (Right mempty) $ check a
 
 
 instance Monoid e => Vlternative e (ErrWarn e) where
