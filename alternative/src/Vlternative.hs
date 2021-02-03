@@ -110,19 +110,18 @@ isSuccess = fmap (either (const False) (const True)) . recoverResult
 -- |
 -- Extend Alternative with static errors to Vlternative
 --
--- >>> recover (Annotate "boo" $ Just 1)
--- Annotate "" (Just ("boo",Just 1))
--- >>> recover (Annotate "boo" $ Nothing)
--- Annotate "" (Just ("boo",Nothing))
--- >>> recover ((Annotate "boo" $ Nothing) <-> (Annotate "" $ Just 1))
--- Annotate "" (Just ("boo",Just 1))
--- >>> recover ((Annotate "foo" $ Nothing) <-> (Annotate "bar" $ Nothing))
--- Annotate "" (Just ("foobar",Nothing))
-instance (Monoid e,  Eq1 f, Alternative f) => Vlternative e (Annotate f) where
-    failure e = Annotate e empty
+-- >>> recover (annotate "boo" $ Just 1)
+-- Annotate (Right "") (Just ("",Just 1))
+-- >>> recover (annotate "boo" $ Nothing)
+-- Annotate (Right "") (Just ("boo",Nothing))
+-- >>> recover ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
+-- Annotate (Right "") (Just ("boo",Just 1))
+-- >>> recover ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
+-- Annotate (Right "") (Just ("foobar",Nothing))
+instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annotate f) where
+    failure e = Annotate (Left e) noOpFail
     a <-> b = a <|> b
-    recover a = Annotate mempty $ check a
-
+    recover a = Annotate (Right mempty) $ check a
 
 
 instance Monoid e => Vlternative e (ErrWarn e) where
