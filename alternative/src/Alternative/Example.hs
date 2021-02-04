@@ -85,10 +85,8 @@ emplP' txt =
    <*> ew deptP 
    <*> (ew bossP1  <|> ew bossP2 <|> ew bossP3)
    where
-        ew p = cnvt p txt
-
-        cnvt :: A.Parser a -> B.ByteString -> ErrWarn [String] [String] a
-        cnvt p s = singleErr $ A.parseOnly p s
+        ew :: A.Parser a  -> ErrWarn [String] [String] a
+        ew p = singleErr $ A.parseOnly p txt
 
         singleErr :: Either e a -> ErrWarn [e] [e] a
         singleErr (Left e) = EW $ Left [e]
@@ -121,10 +119,12 @@ emplP'' =
         singleErr (Right r) = Right ([], r)
 
 -- |
--- Annotate outputs to see which failed
+-- Annotate outputs to see which failed.
 --
 -- >>> check . emplAnn $ "id last-first-name dept boss1"
 -- Just ([],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
+--
+-- Note more errors reported in this example (because <*> uses `Validation` like definition)
 --
 -- >>> check . emplAnn $ "id last-firs-name dept boss2"
 -- Just (["nameP1","nameP2","bossP1"],Nothing)

@@ -49,7 +49,7 @@ instance (Applicative f, CheckSuccess f, Monoid e) => Applicative (Annotate f e)
     pure a = Annotate (Right mempty) (pure a)
     a1 <*> a2 = case (normalize a1, normalize a2)
           of (Annotate e1 ax1, Annotate e2 ax2) ->
-              Annotate (e1 `acLefts` e2) (ax1 <*> ax2) 
+              Annotate (e1 `acLefts` e2) (ax1 <*> ax2) -- this example uses `Validation` like accumulation for <*>
       where
        acLefts :: Either e e -> Either e e -> Either e e  
        acLefts a b =  Left . F.fold $ lefts [a,b]
