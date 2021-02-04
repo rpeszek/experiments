@@ -7,7 +7,6 @@
 
 -- |
 -- Alternative instance for @r -> Either e (w, a)@ that accumulates errors as warnings.
--- usage examples in Alternative.Examples
 --
 -- Example use in "Alternative.Examples"
 

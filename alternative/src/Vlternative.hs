@@ -21,6 +21,8 @@ import Data.Functor.Classes
 -- |
 -- Alternative with A upside down.
 --
+-- Example use in "Vlternative.Example"
+--
 -- Represents `Alternative` with a specified failure monoid type  
 -- and abitily to recover from failure  
 -- instance has ability to accumulate errors as warnings.
