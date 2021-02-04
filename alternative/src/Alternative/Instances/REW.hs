@@ -4,15 +4,19 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+
+-- |
+-- Alternative instance for @r -> Either e (w, a)@ that accumulates errors as warnings.
+-- usage examples in Alternative.Examples
+--
+-- Example use in "Alternative.Examples"
 
 module Alternative.Instances.REW where
 
 import Control.Applicative 
 
 
-
--- conceptual prototype, could be useful, e.g. naturally transforms from to aeson like parsers
+-- Conceptual prototype, could be useful, e.g. naturally transforms from to aeson like parsers
 
 newtype RdrWarnErr r e w a = REW {runREW :: r -> Either e (w, a)} deriving Functor
 
