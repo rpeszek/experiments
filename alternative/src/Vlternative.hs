@@ -16,6 +16,7 @@ import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
 import Alternative.Instances.Annotate
 import Data.Functor.Classes
+import Alternative.Instances.SimpleParser
 
 
 -- |
@@ -125,7 +126,6 @@ instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annot
     a <-> b = a <|> b
     recover a = Annotate (Right mempty) $ check a
 
-
 instance Monoid e => Vlternative e (ErrWarn e) where
     failure e = EW $ Left e
 
@@ -136,7 +136,6 @@ instance Monoid e => Vlternative e (ErrWarn e) where
     recover (EW (Right (e, r))) = EW $ Right (mempty, (e, Just r))
     recover (EW (Left e)) = EW $  Right (mempty, (e, Nothing))
 
-    
 instance (Monoid e) => Vlternative e (RdrWarnErr r e) where 
     failure e = REW . const $ Left e
     REW f <-> REW g = REW (\r ->
@@ -151,3 +150,13 @@ instance (Monoid e) => Vlternative e (RdrWarnErr r e) where
               Left e ->  Right (mempty, (e, Nothing))
             )
 
+
+-- SimpleParser does not have much error handling and this does not make much sense
+instance  Vlternative String SimpleParser where
+    failure e = P (\s -> (s, Left e))
+    a <-> b = a <|> b
+    recover a = do
+        res <- wtryparser a
+        case res of
+            Left err -> pure (err, Nothing)
+            Right r -> pure ("", Just r) -- makes no sense
