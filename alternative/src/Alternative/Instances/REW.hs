@@ -42,8 +42,12 @@ instance (Monoid w) => Monad (RdrWarnErr r e w) where
                             Left e -> Left e
         )
 
-
-instance (Monoid e) => Alternative (RdrWarnErr r e e) where 
+-- |
+-- A more general @instance (Monoid e) => Alternative (RdrWarnErr r e e)@ would be
+-- questionable with some monoids like @First@ or @Last@.
+-- 
+instance Alternative (RdrWarnErr r [e] [e]) where    
+-- instance (Monoid e) => Alternative (RdrWarnErr r e e) where 
     empty  = REW . const $ Left mempty
     REW f <|> REW g = REW (\r ->
              case (f r, g r) of 
