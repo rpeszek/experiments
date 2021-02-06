@@ -6,26 +6,26 @@
 -- Experiments with possible alternatives to `MonadPlus`
 module WonadPlus where
    
-import Alternative.Instances.TraditionalParser
+import qualified Alternative.Instances.TraditionalParser as Trad
+import qualified Alternative.Instances.WarnParser as Warn
+import           Vlternative
 
 
-class Monad m => WonadPlus e m where
-    wfail :: e -> m a
+class (Monad (m e), Recover e m) => WonadPlus e m where
+    wfail :: e -> m e a
 
-    wtry :: m a -> m (Either e a)  -- should be non-destructive, not consume parser input, etc.
-
-    wplus :: m a -> (e -> m a) -> m a
+    wplus :: m e a -> (e -> m e a) -> m e a
     wplus a f = do 
-        er <- wtry a
+        er <- recover a
         case er of
             Left e -> f e
-            Right a -> pure a 
+            Right _ -> a
 
 
 -- * instances
 
-instance WonadPlus e (TraditionalParser s e) where
-     wfail e = P (\s -> (s, Left e))
-     wtry p = tryLookAhead p
+instance Monoid e => WonadPlus e (Trad.TraditionalParser s) where
+     wfail = Trad.failParse
 
-
+instance Monoid e => WonadPlus e (Warn.WarnParser s e) where
+     wfail = Warn.failParse

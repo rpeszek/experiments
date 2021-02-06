@@ -15,6 +15,7 @@ import Control.Arrow
 import qualified Data.Foldable as F
 import Data.Either
 import Data.Maybe
+import Data.Monoid
 
 class Applicative f => AlternativeMinus f where
     noOpFail :: f a
@@ -82,6 +83,15 @@ instance (Monoid e, CheckSuccess f, AlternativeMinus f) => Alternative (Annotate
 check :: (CheckSuccess f, Applicative f, Monoid e) =>
      Annotate f e a -> f (e, Maybe a)
 check =  fmap ((id ||| const mempty) *** id) . runAnnotate 
+
+check' :: (CheckSuccess f, Applicative f, Monoid e) =>
+     Annotate f e a -> f (Either e (e, a))
+check' =  fmap cvrt . runAnnotate
+  where
+   cvrt (Left err, Just a) = Right (err, a)
+   cvrt (Left err, Nothing) = Left err
+   cvrt (Right _, Just a) = Right (mempty, a)
+   cnrt (Right w, Nothing) = undefined -- Left mempty -- impossible
 
 runAnnotate :: (CheckSuccess f, Applicative f) =>
      Annotate f e a -> f (Either e e, Maybe a)

@@ -42,7 +42,7 @@ instance Monoid w => Monad (WarnParser s e w) where
           in  case eh of
                   Left err -> (s1, Left err)
                   Right (w :: w, P h) -> 
-                    let (s2, ewa2 :: Either e (w,_)) = h s1
+                    let (s2, ewa2) = h s1
                     in (s2,  fmap (\(w2,a) -> (w <> w2, a)) ewa2) -- lat line problem
 
 instance Monoid e => Alternative (WarnParser s e e) where
