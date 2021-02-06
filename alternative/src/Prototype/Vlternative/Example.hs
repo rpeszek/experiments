@@ -2,6 +2,7 @@
 module Prototype.Vlternative.Example where
 
 import Prototype.Vlternative
+import Prototype.Recover
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
 import Alternative.Example

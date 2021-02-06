@@ -10,9 +10,9 @@
 -- Example use in "Alternative.Examples"
 module Alternative.Instances.WarnParser where
 
-import           Data.Either    
+-- import           Data.Either    
 import           Control.Applicative 
-import           Control.Monad
+-- import           Control.Monad
 import qualified Data.Text as T
 
 -- >>> :set -XOverloadedStrings

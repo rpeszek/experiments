@@ -9,11 +9,13 @@
 -- Experiments with possible alternatives to `Alternative`
 -- goal is a principled design (with laws) which is Alternative like and
 -- exposes error semantics
+--
+-- @many@ and @some@ are implemented in @WonadPlus@
 module Prototype.Vlternative where
 
 import           Control.Applicative
-import           Control.Arrow
-import           Data.Functor.Classes
+-- import           Control.Arrow
+-- import           Data.Functor.Classes
 
 import           Prototype.Recover
 import           Alternative.Instances.ErrWarn
@@ -94,12 +96,6 @@ class (Applicative (f e)) => Vlternative e f where
     warn ::  e -> f e a -> f e a
     warn er a = failure er <-> a 
 
-recoverErrors :: forall e f a. (Vlternative e f, Recover e f) => f e a -> f e e
-recoverErrors = fmap (id ||| fst) . recover
-
--- | this loses warnings!
-recoverResult :: forall e f a. (Vlternative e f, Recover e f) => f e a -> f e (Either e a)
-recoverResult = fmap (fmap snd) . recover
 
 
 -- | 
@@ -108,26 +104,14 @@ isSuccess :: forall e f a. (Vlternative e f, Recover e f) => f e a -> f e Bool
 isSuccess = fmap (either (const False) (const True)) . recoverResult
 
 
+
+
+
 -- * instances
 
+-- TODO Recover instances are now orphan, keeping them here is convenient for prototyping
 
--- |
--- Extend Alternative with static errors to Vlternative
---
--- >>> recover (annotate "boo" $ Just 1)
--- Annotate (Right "") (Just (Right ("",1)))
--- >>> recover (annotate "boo" $ Nothing)
--- Annotate (Right "") (Just (Left "boo"))
--- >>> recover ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
--- Annotate (Right "") (Just (Right ("boo",1)))
--- >>> recover ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
--- Annotate (Right "") (Just (Left "foobar"))
-instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annotate f) where
-    failure e = Annotate (Left e) noOpFail
-    a <-> b = a <|> b
 
-instance (Monoid e,  CheckSuccess f, Applicative f) => Recover e (Annotate f) where
-    recover a = Annotate (Right mempty) $ check' a
 
 instance Monoid e => Vlternative e (ErrWarn e) where
     failure e = EW $ Left e
@@ -152,6 +136,24 @@ instance (Monoid e) => Vlternative e (RdrWarnErr r e) where
 instance (Monoid e) => Recover e (RdrWarnErr r e) where           
     recover (REW f) = REW (\r -> Right (mempty, f r))
 
+-- |
+-- Extend Alternative with static errors to Vlternative
+--
+-- >>> recover (annotate "boo" $ Just 1)
+-- Annotate (Right "") (Just (Right ("",1)))
+-- >>> recover (annotate "boo" $ Nothing)
+-- Annotate (Right "") (Just (Left "boo"))
+-- >>> recover ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
+-- Annotate (Right "") (Just (Right ("boo",1)))
+-- >>> recover ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
+-- Annotate (Right "") (Just (Left "foobar"))
+instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annotate f) where
+    failure e = Annotate (Left e) noOpFail
+    a <-> b = a <|> b
+
+instance (Monoid e,  CheckSuccess f, Applicative f) => Recover e (Annotate f) where
+    recover a = Annotate (Right mempty) $ check' a
+
 
 -- TraditionalParser does not have much error handling and this does not make much sense
 instance Monoid e => Vlternative e (Trad.TraditionalParser s) where
@@ -160,7 +162,7 @@ instance Monoid e => Vlternative e (Trad.TraditionalParser s) where
 
 instance Monoid e => Recover e (Trad.TraditionalParser s) where
     recover a = fmap (fmap (mempty,)) $ Trad.tryLookAhead a
-
+   
 instance Monoid e => Vlternative e (Warn.WarnParser s e) where
     failure = Warn.failParse
     a <-> b = a <|> b
@@ -168,3 +170,21 @@ instance Monoid e => Vlternative e (Warn.WarnParser s e) where
 instance Monoid e => Recover e (Warn.WarnParser s e) where
     recover a = Warn.tryLookAhead a   
 
+
+
+newtype F2Lift f e a = F2Lift {unF2Lift :: f a} deriving (Show, Eq, Functor)
+
+instance Applicative f => Applicative (F2Lift f e) where
+    pure x = F2Lift $ pure x
+    F2Lift a <*> F2Lift b = F2Lift $ a <*> b
+
+instance Monad m => Monad (F2Lift m e) where
+    F2Lift a >>= f = F2Lift $ a >>= (unF2Lift . f)    
+
+instance  Vlternative () (F2Lift Maybe) where
+    failure _ = F2Lift Nothing
+    F2Lift a <-> F2Lift b = F2Lift $ a <|> b
+
+instance Recover () (F2Lift Maybe) where
+    recover (F2Lift Nothing) = F2Lift $ Just $ Left ()
+    recover (F2Lift (Just a)) = F2Lift $ Just $ Right ((), a)   
