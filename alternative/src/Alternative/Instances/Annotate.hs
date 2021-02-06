@@ -16,23 +16,15 @@ import qualified Data.Foldable as F
 import Data.Either
 import Data.Maybe
 import Data.Monoid
+import Prototype.Recover 
 
+-- MonadZero alike
 class Applicative f => AlternativeMinus f where
     noOpFail :: f a
 
 instance AlternativeMinus Maybe where
     noOpFail = Nothing  
 
-class CheckSuccess f where
-    checkSuccess :: f a -> Bool
-
--- | CheckSuccess is quite restrictive but will allow any `Eq1` instance 
-newtype EQ1 f a = EQ1 (f a) 
-instance (Applicative f, Eq1 f) => CheckSuccess (EQ1 f) where
-    checkSuccess (EQ1 fa) = fmap (const ()) fa `eq1` pure ()
-
-instance CheckSuccess Maybe where
-    checkSuccess = maybe False (const True)
 
 
 data Annotate f e a = Annotate (Either e e) (f a) deriving (Show, Eq, Functor)

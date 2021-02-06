@@ -8,7 +8,9 @@ module Prototype.WonadPlus where
    
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
+
 import           Prototype.Vlternative
+import           Prototype.Recover
 
 
 class (Monad (m e), Recover e m) => WonadPlus e m where

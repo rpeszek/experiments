@@ -11,20 +11,19 @@
 -- exposes error semantics
 module Prototype.Vlternative where
 
-import Control.Applicative
-import Control.Arrow
-import Alternative.Instances.ErrWarn
-import Alternative.Instances.REW
-import Alternative.Instances.Annotate
+import           Control.Applicative
+import           Control.Arrow
 import           Data.Functor.Classes
+
+import           Prototype.Recover
+import           Alternative.Instances.ErrWarn
+import           Alternative.Instances.REW
+import           Alternative.Instances.Annotate
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 
 
-class (Functor (f e)) => Recover e f where
-    recover :: f e a -> f e (Either e (e, a)) 
-    -- ^ if error is recoverable, @recover@ converts to a non-failing  @f e@  with no error accumulation as Left
-    -- for successful computations @Right (w, a)@ is returned with possibly accumulated warnings. 
+
 
 -- |
 -- Alternative with A upside down.
@@ -40,7 +39,10 @@ class (Functor (f e)) => Recover e f where
 -- empty = failure mempty
 -- <|>   = <->
 -- 
--- laws: (TODO type check, verify these)
+-- laws: (assume Recover instance)
+--
+-- (TODO type check, verify these)
+--
 -- @
 --
 -- without critical errors:
@@ -85,24 +87,24 @@ class (Functor (f e)) => Recover e f where
 --   *  mapping over e accumulated in a successful computation @x :: f e a@ (isSuccess x = pure True) 
 --   *  mapping e in a failed computation @x :: f e a@ (toSuccess x = pure False) 
 --
-class (Applicative (f e), Recover e f) => Vlternative e f where
+class (Applicative (f e)) => Vlternative e f where
     failure :: e -> f e a  -- name fail is taken, should terminate applicative, monad
     (<->)   :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
                                                       
     warn ::  e -> f e a -> f e a
     warn er a = failure er <-> a 
 
-recoverErrors :: forall e f a. Vlternative e f => f e a -> f e e
+recoverErrors :: forall e f a. (Vlternative e f, Recover e f) => f e a -> f e e
 recoverErrors = fmap (id ||| fst) . recover
 
 -- | this loses warnings!
-recoverResult :: forall e f a. Vlternative e f => f e a -> f e (Either e a)
+recoverResult :: forall e f a. (Vlternative e f, Recover e f) => f e a -> f e (Either e a)
 recoverResult = fmap (fmap snd) . recover
 
 
 -- | 
 -- needed for the laws
-isSuccess :: forall e f a. Vlternative e f => f e a -> f e Bool
+isSuccess :: forall e f a. (Vlternative e f, Recover e f) => f e a -> f e Bool
 isSuccess = fmap (either (const False) (const True)) . recoverResult
 
 
