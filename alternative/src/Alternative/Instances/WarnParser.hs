@@ -15,6 +15,7 @@ import           Control.Applicative
 -- import           Control.Monad
 import qualified Data.Text as T
 
+-- $setup
 -- >>> :set -XOverloadedStrings
 
 newtype WarnParser s e w a = P { unP :: s -> (s, Either e (w,a)) } deriving Functor

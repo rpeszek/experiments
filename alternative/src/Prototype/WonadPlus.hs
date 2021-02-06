@@ -13,6 +13,7 @@ import qualified Alternative.Instances.WarnParser as Warn
 import           Prototype.Vlternative () -- temp orphans 
 import           Prototype.Recover
 
+-- $setup
 -- >>> :set -XOverloadedStrings
 
 class (Monad (m e), Recover e m) => WonadPlus e m where

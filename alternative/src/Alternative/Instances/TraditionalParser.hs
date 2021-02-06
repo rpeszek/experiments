@@ -13,6 +13,7 @@ import           Control.Applicative
 -- import           Control.Monad
 import qualified Data.Text as T
 
+-- $setup
 -- >>> :set -XOverloadedStrings
 
 newtype TraditionalParser s e a = P { unP :: s -> (s, Either e a) } deriving Functor
