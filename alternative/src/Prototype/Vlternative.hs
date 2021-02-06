@@ -9,14 +9,14 @@
 -- Experiments with possible alternatives to `Alternative`
 -- goal is a principled design (with laws) which is Alternative like and
 -- exposes error semantics
-module Vlternative where
+module Prototype.Vlternative where
 
 import Control.Applicative
 import Control.Arrow
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
 import Alternative.Instances.Annotate
-import Data.Functor.Classes
+import           Data.Functor.Classes
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 

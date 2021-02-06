@@ -1,4 +1,4 @@
-module CheckFail where
+module Prototype.CheckFail where
 
 
 -- | check if computation has failed.

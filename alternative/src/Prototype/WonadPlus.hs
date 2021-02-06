@@ -4,11 +4,11 @@
 
 -- |
 -- Experiments with possible alternatives to `MonadPlus`
-module WonadPlus where
+module Prototype.WonadPlus where
    
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
-import           Vlternative
+import           Prototype.Vlternative
 
 
 class (Monad (m e), Recover e m) => WonadPlus e m where

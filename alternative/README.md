@@ -16,13 +16,13 @@ Comparison definitions
 
 Proof of concept work on alternatives to Alternative
 
-* `Vlternative`
-* `WonadPlus`
+* `Prototype.Vlternative`
+* `Prototype.WonadPlus`
 
 Examples:
 
 * `Alternative.Examples`
-* `Vlternative.Examples`
+* `Prototype.Vlternative.Examples`
 
 
 

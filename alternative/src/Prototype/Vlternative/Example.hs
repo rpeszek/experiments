@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Vlternative.Example where
+module Prototype.Vlternative.Example where
 
-import Vlternative
+import Prototype.Vlternative
 import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
 import Alternative.Example
