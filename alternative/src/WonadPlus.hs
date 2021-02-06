@@ -6,7 +6,7 @@
 -- Experiments with possible alternatives to `MonadPlus`
 module WonadPlus where
    
-import Alternative.Instances.SimpleParser
+import Alternative.Instances.TraditionalParser
 
 
 class Monad m => WonadPlus e m where
@@ -24,8 +24,8 @@ class Monad m => WonadPlus e m where
 
 -- * instances
 
-instance WonadPlus e (SimpleParser e) where
+instance WonadPlus e (TraditionalParser s e) where
      wfail e = P (\s -> (s, Left e))
-     wtry p = wtryparser p
+     wtry p = tryLookAhead p
 
 

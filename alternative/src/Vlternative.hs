@@ -16,7 +16,7 @@ import Alternative.Instances.ErrWarn
 import Alternative.Instances.REW
 import Alternative.Instances.Annotate
 import Data.Functor.Classes
-import Alternative.Instances.SimpleParser
+import Alternative.Instances.TraditionalParser
 
 
 -- |
@@ -151,12 +151,12 @@ instance (Monoid e) => Vlternative e (RdrWarnErr r e) where
             )
 
 
--- SimpleParser does not have much error handling and this does not make much sense
-instance  Vlternative String SimpleParser where
+-- TraditionalParser does not have much error handling and this does not make much sense
+instance Monoid e => Vlternative e (TraditionalParser s) where
     failure e = P (\s -> (s, Left e))
     a <-> b = a <|> b
     recover a = do
-        res <- wtryparser a
+        res <- tryLookAhead a
         case res of
             Left err -> pure (err, Nothing)
-            Right r -> pure ("", Just r) -- makes no sense
+            Right r -> pure (mempty, Just r) 
