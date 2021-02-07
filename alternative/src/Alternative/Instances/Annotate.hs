@@ -91,7 +91,8 @@ check' =  fmap cvrt . runAnnotate
    cvrt (Left err, Just a) = Right (err, a)
    cvrt (Left err, Nothing) = Left err
    cvrt (Right _, Just a) = Right (mempty, a)
-   cnrt (Right w, Nothing) = undefined -- Left mempty -- impossible
+   cnrt (Right _, Nothing) =  Left mempty -- impossible
+
 
 runAnnotate :: (CheckSuccess f, Applicative f) =>
      Annotate f e a -> f (Either e e, Maybe a)
