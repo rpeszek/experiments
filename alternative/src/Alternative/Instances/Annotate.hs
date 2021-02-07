@@ -92,7 +92,7 @@ check' =  fmap cvrt . runAnnotate
    cvrt (Left err, Just a) = Right (err, a)
    cvrt (Left err, Nothing) = Left err
    cvrt (Right _, Just a) = Right (mempty, a)
-   cnrt (Right _, Nothing) =  Left mempty -- impossible
+   cvrt (Right _, Nothing) =  Left mempty -- impossible
 
 
 runAnnotate :: (CheckSuccess f, Applicative f) =>
