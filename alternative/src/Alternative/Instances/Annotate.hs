@@ -88,6 +88,7 @@ check' :: (CheckSuccess f, Applicative f, Monoid e) =>
      Annotate f e a -> f (Either e (e, a))
 check' =  fmap cvrt . runAnnotate
   where
+   cvrt :: Monoid e => (Either e e, Maybe a) -> Either e (e, a)   
    cvrt (Left err, Just a) = Right (err, a)
    cvrt (Left err, Nothing) = Left err
    cvrt (Right _, Just a) = Right (mempty, a)
