@@ -4,3 +4,4 @@
 .history/
 temp/
 Temp*.hs
+.vscode/

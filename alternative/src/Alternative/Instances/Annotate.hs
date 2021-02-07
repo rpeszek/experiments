@@ -4,6 +4,9 @@
 
 -- | 
 -- Add static error information to existing Alternative
+-- This will work with simple alternatives like Maybe.
+--
+-- Example use in "Alternative.Examples"
 module Alternative.Instances.Annotate where
 
 import Control.Applicative 
@@ -12,7 +15,10 @@ import Control.Arrow
 import qualified Data.Foldable as F
 import Data.Either
 import Data.Maybe
+import Data.Monoid
 
+
+-- MonadZero alike
 class Applicative f => AlternativeMinus f where
     noOpFail :: f a
 
@@ -22,6 +28,7 @@ instance AlternativeMinus Maybe where
 class CheckSuccess f where
     checkSuccess :: f a -> Bool
 
+-- | CheckSuccess is quite restrictive but will allow any `Eq1` instance 
 newtype EQ1 f a = EQ1 (f a) 
 instance (Applicative f, Eq1 f) => CheckSuccess (EQ1 f) where
     checkSuccess (EQ1 fa) = fmap (const ()) fa `eq1` pure ()
@@ -29,27 +36,20 @@ instance (Applicative f, Eq1 f) => CheckSuccess (EQ1 f) where
 instance CheckSuccess Maybe where
     checkSuccess = maybe False (const True)
 
-
 data Annotate f e a = Annotate (Either e e) (f a) deriving (Show, Eq, Functor)
 
 -- |
 -- Annotate computations of type @f a@ with a label @e@
--- labeling is done using Right, any error accumulations switched annotation(s) to Left
+-- labeling is done using Right, any error accumulations switches annotation(s) to Left
 annotate :: e -> f a -> Annotate f e a
 annotate err fa = Annotate (Right err) fa
-
-normalize :: (Applicative f, CheckSuccess f) => Annotate f e a -> Annotate f e a
-normalize (Annotate e fa) = 
-    if checkSuccess fa 
-    then Annotate e fa
-    else Annotate (either Left Left e) fa 
 
 
 instance (Applicative f, CheckSuccess f, Monoid e) => Applicative (Annotate f e) where
     pure a = Annotate (Right mempty) (pure a)
     a1 <*> a2 = case (normalize a1, normalize a2)
           of (Annotate e1 ax1, Annotate e2 ax2) ->
-              Annotate (e1 `acLefts` e2) (ax1 <*> ax2) 
+              Annotate (e1 `acLefts` e2) (ax1 <*> ax2) -- this example uses `Validation` like accumulation for <*>
       where
        acLefts :: Either e e -> Either e e -> Either e e  
        acLefts a b =  Left . F.fold $ lefts [a,b]
@@ -59,13 +59,6 @@ instance (Monoid e, CheckSuccess f, AlternativeMinus f) => Alternative (Annotate
     empty = Annotate (Left mempty) noOpFail
     a1 <|> a2 = alt a1 a2            
 
-alt :: (AlternativeMinus f, CheckSuccess f, Monoid e) => Annotate f e a -> Annotate f e a -> Annotate f e a
-alt a b = case (normalize a, normalize b) of
-    (Annotate e1 ax1, Annotate e2 ax2) ->
-        case (e1, e2) of
-            (Right _, _) -> Annotate e1 ax1 -- a
-            (Left _, Right _) -> Annotate e1 ax2 
-            (Left m1, Left m2) -> Annotate (Left $ m1 <> m2) noOpFail 
 
 -- |
 -- >>> check (annotate "boo" $ Just 1)
@@ -91,6 +84,16 @@ check :: (CheckSuccess f, Applicative f, Monoid e) =>
      Annotate f e a -> f (e, Maybe a)
 check =  fmap ((id ||| const mempty) *** id) . runAnnotate 
 
+check' :: (CheckSuccess f, Applicative f, Monoid e) =>
+     Annotate f e a -> f (Either e (e, a))
+check' =  fmap cvrt . runAnnotate
+  where
+   cvrt (Left err, Just a) = Right (err, a)
+   cvrt (Left err, Nothing) = Left err
+   cvrt (Right _, Just a) = Right (mempty, a)
+   cnrt (Right _, Nothing) =  Left mempty -- impossible
+
+
 runAnnotate :: (CheckSuccess f, Applicative f) =>
      Annotate f e a -> f (Either e e, Maybe a)
 runAnnotate (Annotate e fa) =
@@ -99,5 +102,18 @@ runAnnotate (Annotate e fa) =
         else pure (either Left Left $ e, Nothing)
 
    
+alt :: (AlternativeMinus f, CheckSuccess f, Monoid e) => Annotate f e a -> Annotate f e a -> Annotate f e a
+alt a b = case (normalize a, normalize b) of
+    (Annotate e1 ax1, Annotate e2 ax2) ->
+        case (e1, e2) of
+            (Right _, _) -> Annotate e1 ax1 -- a
+            (Left _, Right _) -> Annotate e1 ax2 
+            (Left m1, Left m2) -> Annotate (Left $ m1 <> m2) noOpFail 
+
+normalize :: (Applicative f, CheckSuccess f) => Annotate f e a -> Annotate f e a
+normalize (Annotate e fa) = 
+    if checkSuccess fa 
+    then Annotate e fa
+    else Annotate (either Left Left e) fa 
 
 
