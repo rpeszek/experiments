@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 -- |
 -- Experiments with possible alternatives to `MonadPlus`
@@ -22,9 +24,9 @@ class Monad (m e) => WonadPlus e m where
     wplus :: m e a -> (e -> m e a) -> m e a
 
 
-recoverWplus :: (Monad (m e), Recover e m) => m e a -> (e -> m e a) -> m e a
+recoverWplus :: forall w e m a. (Monad (m e), Recover e w m) => m e a -> (e -> m e a) -> m e a
 recoverWplus a f = do 
-        er <- recover a
+        er <- recover @e @w a
         case er of
             Left e -> f e
             Right _ -> a
@@ -39,7 +41,7 @@ stake 0 (Snoc lst a) = (Nothing, [])
 stake n (Snoc lst a) = fmap (a :) (stake (n-1) lst) 
 
 -- | @some@ and @many@ make sense only for some computations
-class (WonadPlus e m, Recover e m) => WonadPlusStream e m where
+class (WonadPlus e m) => WonadPlusStream e m where
     wsome :: m e a -> m e (SList e a)
 
     wmany :: m e a -> m e (SList e a)
@@ -47,9 +49,9 @@ class (WonadPlus e m, Recover e m) => WonadPlusStream e m where
 
 -- | 
 -- NOTE standard implementation @some v = Snoc <$> many <*> v@ is non-termination prone as we need to evaluate actual @v@, not @many@
-recoverWsome :: (WonadPlusStream e m, Recover e m) => m e a -> m e (SList e a)
+recoverWsome :: forall w e m a. (WonadPlusStream e m, Recover e w m) => m e a -> m e (SList e a)
 recoverWsome v = do 
-        er <- recover v 
+        er <- recover @e @w v 
         case er of
             Left e -> do
                  _ <- v -- consume v (this should fail so the next line is not needed)
@@ -64,18 +66,18 @@ recoverWsome v = do
 
 instance Monoid e => WonadPlus e (Trad.TraditionalParser s) where
      wfail = Trad.failParse
-     wplus = recoverWplus
+     wplus = recoverWplus @() 
 
 -- |
 --
 -- >>> Trad.runParser (wsome (Trad.string "sk")) "skskboo"
 -- Right (Snoc (Snoc (Last "sk no parse") "sk") "sk")
 instance Monoid e => WonadPlusStream e (Trad.TraditionalParser s) where 
-    wsome = recoverWsome
+    wsome = recoverWsome @()
 
 instance Monoid e => WonadPlus e (Warn.WarnParser s e) where
     wfail = Warn.failParse
-    wplus = recoverWplus
+    wplus = recoverWplus @e
 
 instance Monoid e => WonadPlusStream e (Warn.WarnParser s e) where 
-    wsome = recoverWsome
+    wsome = recoverWsome @e
