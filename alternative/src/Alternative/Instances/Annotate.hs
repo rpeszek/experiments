@@ -18,7 +18,7 @@ import Data.Maybe
 import Data.Monoid
 
 
--- MonadZero alike
+-- ApplicativeZero 
 class Applicative f => AlternativeMinus f where
     noOpFail :: f a
 

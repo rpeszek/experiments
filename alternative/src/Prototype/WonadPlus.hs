@@ -24,7 +24,7 @@ class Monad (m e) => WonadPlus e m where
     wplus :: m e a -> (e -> m e a) -> m e a
 
 
-recoverWplus :: forall w e m a. (Monad (m e), Recover e w m) => m e a -> (e -> m e a) -> m e a
+recoverWplus :: forall w e m a. (Monad (m e), Recover e w (m e)) => m e a -> (e -> m e a) -> m e a
 recoverWplus a f = do 
         er <- recover @e @w a
         case er of
@@ -49,7 +49,7 @@ class (WonadPlus e m) => WonadPlusStream e m where
 
 -- | 
 -- NOTE standard implementation @some v = Snoc <$> many <*> v@ is non-termination prone as we need to evaluate actual @v@, not @many@
-recoverWsome :: forall w e m a. (WonadPlusStream e m, Recover e w m) => m e a -> m e (SList e a)
+recoverWsome :: forall w e m a. (WonadPlusStream e m, Recover e w (m e)) => m e a -> m e (SList e a)
 recoverWsome v = do 
         er <- recover @e @w v 
         case er of

@@ -27,7 +27,7 @@ import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 
 -- $setup
--- >>> :set -XOverloadedStrings -XTypeApplications
+-- >>> :set -XOverloadedStrings -XTypeApplications -XFlexibleContexts
 
 -- |
 -- Alternative with A upside down.
@@ -102,8 +102,8 @@ class (Applicative (f e)) => Vlternative e f where
 
 -- | 
 -- needed for the laws
-isSuccess :: forall w e f a. (Vlternative e f, Recover e w f) => f e a -> f e Bool
-isSuccess = fmap (either (const False) (const True)) . recoverResult @ w 
+isSuccess :: forall w e f a. (Vlternative e f, Recover e w (f e)) => f e a -> f e Bool
+isSuccess = fmap (either (const False) (const True)) . recoverResult @ e @ w 
 
 
 
@@ -122,7 +122,7 @@ instance Monoid e => Vlternative e (ErrWarn e) where
     EW (Left e1) <-> EW (Right (w2, r)) = EW $ Right (e1 <> w2, r)
     l@(EW (Right _)) <-> _ = l
 
-instance Monoid e => Recover e e (ErrWarn e) where
+instance Monoid e => Recover e e (ErrWarn e e) where
     recover (EW x) = EW $ Right (mempty, x)
 
 
@@ -135,25 +135,25 @@ instance (Monoid e) => Vlternative e (RdrWarnErr r e) where
                 (l@(Right _), _) -> l
           )
 
-instance (Monoid e) => Recover e e (RdrWarnErr r e) where           
+instance (Monoid e) => Recover e e (RdrWarnErr r e e) where           
     recover (REW f) = REW (\r -> Right (mempty, f r))
 
 -- |
 -- Extend Alternative with static errors to Vlternative
 --
--- >>> recover'  (annotate "boo" $ Just 1)
+-- >>> recover' @ String (annotate "boo" $ Just 1)
 -- Annotate (Right "") (Just (Right ("",1)))
--- >>> recover' (annotate "boo" $ Nothing)
+-- >>> recover' @ String (annotate "boo" $ Nothing)
 -- Annotate (Right "") (Just (Left "boo"))
--- >>> recover' ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
+-- >>> recover' @ String ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
 -- Annotate (Right "") (Just (Right ("boo",1)))
--- >>> recover' ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
+-- >>> recover' @ String ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
 -- Annotate (Right "") (Just (Left "foobar"))
 instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annotate f) where
     failure e = Annotate (Left e) noOpFail
     a <-> b = a <|> b
 
-instance (Monoid e,  CheckSuccess f, Applicative f) => Recover e e (Annotate f) where
+instance (Monoid e,  CheckSuccess f, Applicative f) => Recover e e (Annotate f e) where
     recover a = Annotate (Right mempty) $ check' a
 
 
@@ -162,14 +162,14 @@ instance Monoid e => Vlternative e (Trad.TraditionalParser s) where
     failure = Trad.failParse
     a <-> b = a <|> b
 
-instance Monoid e => Recover e () (Trad.TraditionalParser s) where
+instance Monoid e => Recover e () (Trad.TraditionalParser s e) where
     recover a = fmap (fmap ((),)) $ Trad.tryLookAhead a
    
 instance Monoid e => Vlternative e (Warn.WarnParser s e) where
     failure = Warn.failParse
     a <-> b = a <|> b
 
-instance Monoid e => Recover e e (Warn.WarnParser s e) where
+instance Monoid e => Recover e e (Warn.WarnParser s e e) where
     recover a = Warn.tryLookAhead a   
 
 
@@ -187,6 +187,6 @@ instance  Vlternative () (F2Lift Maybe) where
     failure _ = F2Lift Nothing
     F2Lift a <-> F2Lift b = F2Lift $ a <|> b
 
-instance Recover () () (F2Lift Maybe) where
+instance Recover () () (F2Lift Maybe ()) where
     recover (F2Lift Nothing) = F2Lift $ Just $ Left ()
     recover (F2Lift (Just a)) = F2Lift $ Just $ Right ((), a)   
