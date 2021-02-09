@@ -26,6 +26,8 @@ dependencies:
 - mtl
 - containers
 - attoparsec
+- transformers
+- mtl
 
 library:
   source-dirs: src
