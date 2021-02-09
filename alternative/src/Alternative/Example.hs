@@ -18,11 +18,13 @@ import           Control.Applicative
 
 
 import           Alternative.Instances.ErrWarn
+import qualified Alternative.Instances.ErrWarnT as Trf
 import           Alternative.Instances.REW 
 import           Alternative.Instances.Annotate
 
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
+import           Control.Monad.Trans.Class
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -123,6 +125,36 @@ emplP'' =
         singleErr (Right r) = Right ([], r)
 
 -- |
+-- Transformer @ErrWarnT@ annotates failures.
+--
+-- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss1"
+-- Right (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
+--
+-- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-firs-name dept boss2"
+-- Right (Left ["nameP1","nameP2"])
+--
+-- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss"
+-- Right (Right (["bossP1","bossP2"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})) 
+emplTrP :: Trf.ErrWarnT [String] [String] (AT.Parser B.ByteString) Employee
+emplTrP = 
+   Employee 
+   <$> lft ["idP"] idP
+   <*> (lft ["nameP1"] nameP1 <|> lft ["nameP2"] nameP2)
+   <*> lft ["deptP"] deptP
+   <*> (lft ["bossP1"] bossP1 <|> lft ["bossP2"] bossP2 <|> lft ["bossP3"] bossP3)  
+   where
+        lft :: forall a . [String] -> AT.Parser B.ByteString a ->  Trf.ErrWarnT [String] [String] (AT.Parser B.ByteString) a
+        lft msg p = do
+           res :: Either a [String] <- lift $ A.eitherP p (pure msg)
+           case res of 
+              Right _ -> Trf.err msg
+              Left r -> pure r
+
+
+
+-- |
+-- This is far less interesting than ErrWarnT transformer.
+-- 
 -- Annotate outputs to see which failed.
 --
 -- >>> check . emplAnn $ "id last-first-name dept boss1"

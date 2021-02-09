@@ -29,7 +29,8 @@ err e = errWarn (Left e)
 
 -- |
 -- apply ErrWarn semantics to ErrWarnT
-instance (Monad m) => Alternative (ErrWarnT [e] [e] m) where
+-- reduced to lists to avoid weird monoids
+instance Monad m => Alternative (ErrWarnT [e] [e] m) where
    empty = ErrWarnT $ pure $ Left mempty
    (ErrWarnT m1) <|> (ErrWarnT m2) = ErrWarnT $ do
        e1 <- m1
