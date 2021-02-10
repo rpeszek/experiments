@@ -23,6 +23,9 @@ class Monad (m e) => WonadPlus e m where
 
     wplus :: m e a -> (e -> m e a) -> m e a
 
+    wplus' :: m e a -> m e a -> m e a
+    wplus' a b = wplus a (const b)
+
 
 recoverWplus :: forall w e m a. (Monad (m e), Recover e w (m e)) => m e a -> (e -> m e a) -> m e a
 recoverWplus a f = do 
@@ -32,7 +35,10 @@ recoverWplus a f = do
             Right _ -> a
 
 
--- | needed for @wsome@ and @wsome@
+-- | 
+-- list that terminates with information `e` at the end
+--
+-- needed for @wsome@ and @wsome@
 data SList e a = Last e | Snoc (SList e a) a deriving (Show, Eq, Functor)
 
 stake :: Int -> SList e a -> (Maybe e, [a])
@@ -40,7 +46,9 @@ stake n (Last e) = (Just e, [])
 stake 0 (Snoc lst a) = (Nothing, [])
 stake n (Snoc lst a) = fmap (a :) (stake (n-1) lst) 
 
--- | @some@ and @many@ make sense only for some computations
+-- | 
+-- @some@ and @many@ make sense only for some computations
+-- are kept in this (separate) typeclass
 class (WonadPlus e m) => WonadPlusStream e m where
     wsome :: m e a -> m e (SList e a)
 

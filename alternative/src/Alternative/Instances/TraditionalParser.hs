@@ -2,10 +2,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveFunctor #-}
+
 -- |
 -- TraditionalParser is a simple parser prototype that has typical <|> implementation.
 -- 
--- Example use in "Alternative.Examples"
+-- Example use shown in "Alternative.Examples"
 module Alternative.Instances.TraditionalParser where
 
 -- import           Data.Either    

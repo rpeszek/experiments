@@ -6,6 +6,9 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
+-- |
+-- Extended examples supporting my blog post.
+-- Examples showing improved instances of Applicative.
 module Alternative.Example where
 
 import qualified Data.ByteString as B
@@ -19,8 +22,6 @@ import           Control.Applicative
 
 import           Alternative.Instances.ErrWarn
 import qualified Alternative.Instances.ErrWarnT as Trf
-import           Alternative.Instances.REW 
-import           Alternative.Instances.Annotate
 
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
@@ -98,37 +99,12 @@ emplP' txt =
         singleErr (Left e) = EW $ Left [e]
         singleErr (Right r) = EW $ Right ([], r)
 
--- |
--- RdrWarnErr outputs 
---
--- >>> runREW emplP'' $ "id last-first-name dept boss1"
--- Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
---
--- >>> runREW emplP'' "id last-firs-name dept boss2"
--- Left ["\"last-first-name\": not enough input","Failed reading: first-last-name not implemented yet"]
---
--- >>> runREW emplP'' "id last-first-name dept boss"
--- Right (["\"boss1\": not enough input","\"boss2\": not enough input"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
-emplP'' :: RdrWarnErr B.ByteString [String] [String] Employee
-emplP'' = 
-   Employee 
-   <$> rew idP 
-   <*> (rew nameP1  <|> rew nameP2 )
-   <*> rew deptP 
-   <*> (rew bossP1  <|> rew bossP2 <|> rew bossP3)
-   where
-        rew :: AT.Parser B.ByteString a ->  RdrWarnErr B.ByteString [String] [String] a
-        rew p = REW $ singleErr . A.parseOnly p
-
-        singleErr :: Either e a -> Either [e] ([e], a)
-        singleErr (Left e) =  Left [e]
-        singleErr (Right r) = Right ([], r)
 
 -- |
 -- Transformer @ErrWarnT@ annotates failures.
 --
 -- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss1"
--- Right (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
+-- Right (Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
 --
 -- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-firs-name dept boss2"
 -- Right (Left ["nameP1","nameP2"])
@@ -152,31 +128,6 @@ emplTrP =
 
 
 
--- |
--- This is far less interesting than ErrWarnT transformer.
--- 
--- Annotate outputs to see which failed.
---
--- >>> check . emplAnn $ "id last-first-name dept boss1"
--- Just ([],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
---
--- Note more errors reported in this example (because <*> uses `Validation` like definition)
---
--- >>> check . emplAnn $ "id last-firs-name dept boss2"
--- Just (["nameP1","nameP2","bossP1"],Nothing)
---
--- >>> check . emplAnn $ "id last-first-name dept boss"
--- Just (["bossP1","bossP2"],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"}))
-emplAnn ::  B.ByteString -> Annotate Maybe [String] Employee
-emplAnn txt = 
-   Employee 
-   <$> annotate ["idP"] (mb idP)
-   <*> (annotate ["nameP1"] (mb nameP1) <|> annotate ["nameP2"] (mb nameP2))
-   <*> annotate ["deptP"] (mb deptP)
-   <*> (annotate ["bossP1"] (mb bossP1) <|> annotate ["bossP2"] (mb bossP2) <|> annotate ["bossP3"] (mb bossP3))  
-   where 
-     mb :: AT.Parser B.ByteString a -> Maybe a
-     mb p = either (const Nothing) Just $ A.parseOnly p txt
 
 -- * TraditionalParser based example
 

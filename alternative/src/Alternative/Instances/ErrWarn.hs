@@ -5,23 +5,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
+-- |
+-- blue print instance for Alternative with error accumulation
+--
 module Alternative.Instances.ErrWarn where
 
 import Control.Applicative 
 import Control.Monad
-
-
-
--- * @Monoid e => Alternative (Either e)@
---
--- Following instance conflicts with deprecated instance defined in transformers.
--- would need a new type to be more useful.
---
--- instance Monoid e => Alternative (Either e) where 
---     empty  = Left mempty
---     Left e1 <|> Left e2 = Left $ e1 <> e2
---     (Left _) <|> r = r
---     l  <|> _ = l
 
 
 -- * Either e (w, a) instances
