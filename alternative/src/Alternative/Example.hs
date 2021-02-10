@@ -107,25 +107,26 @@ emplP' txt =
 -- Right (Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
 --
 -- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-firs-name dept boss2"
--- Right (Left ["nameP1","nameP2"])
+-- Right (Left [OtherErr "nameP1 no parse",OtherErr "nameP2 no parse"])
 --
 -- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss"
--- Right (Right (["bossP1","bossP2"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})) 
-emplTrP :: Trf.ErrWarnT [String] [String] (AT.Parser B.ByteString) Employee
+-- Right (Right ([BossP1Err "no parse",BossP2Err "no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"}))
+emplTrP :: Trf.ErrWarnT [EmployeeParseErr] [EmployeeParseErr] (AT.Parser B.ByteString) Employee
 emplTrP = 
    Employee 
-   <$> lft ["idP"] idP
-   <*> (lft ["nameP1"] nameP1 <|> lft ["nameP2"] nameP2)
-   <*> lft ["deptP"] deptP
-   <*> (lft ["bossP1"] bossP1 <|> lft ["bossP2"] bossP2 <|> lft ["bossP3"] bossP3)  
+   <$> lft [OtherErr "idP no parse"] idP
+   <*> (lft [OtherErr "nameP1 no parse"] nameP1 <|> lft [OtherErr "nameP2 no parse"] nameP2)
+   <*> lft [OtherErr "deptP no parse"] deptP
+   <*> (lft [BossP1Err "no parse"] bossP1 <|> lft [BossP2Err "no parse"] bossP2 <|> lft [BossP3Err "no parse"] bossP3)  
    where
-        lft :: forall a . [String] -> AT.Parser B.ByteString a ->  Trf.ErrWarnT [String] [String] (AT.Parser B.ByteString) a
+        lft :: forall a . [EmployeeParseErr] -> AT.Parser B.ByteString a ->  Trf.ErrWarnT [EmployeeParseErr] [EmployeeParseErr] (AT.Parser B.ByteString) a
         lft msg p = do
-           res :: Either a [String] <- lift $ A.eitherP p (pure msg)
+           res :: Either a [EmployeeParseErr] <- lift $ A.eitherP p (pure msg)
            case res of 
               Right _ -> Trf.err msg
               Left r -> pure r
 
+data EmployeeParseErr = BossP1Err String | BossP2Err String | BossP3Err String | OtherErr String deriving (Eq, Show)
 
 
 

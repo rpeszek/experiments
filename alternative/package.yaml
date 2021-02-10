@@ -28,6 +28,7 @@ dependencies:
 - attoparsec
 - transformers
 - mtl
+- trifecta
 
 library:
   source-dirs: src
