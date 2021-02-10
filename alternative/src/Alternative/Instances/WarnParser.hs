@@ -70,12 +70,12 @@ failParse :: e -> WarnParser s e w a
 failParse e = P $ \stream -> (stream, Left e) 
 
 -- | does not consume input if failed
--- >>> testParser (string "some-key") "some-key boo" 
+-- >>> testParser (string id "some-key") "some-key boo" 
 -- (" boo",Right ((),"some-key"))
-string :: Monoid w => T.Text -> WarnParser T.Text [String] w T.Text 
-string txt = P (\s -> case T.stripPrefix txt s of
+string :: Monoid w => (String -> e) -> T.Text -> WarnParser T.Text [e] w T.Text 
+string f txt = P (\s -> case T.stripPrefix txt s of
       Just rest -> (rest, Right (mempty, txt))
-      Nothing -> (s, Left [T.unpack $ txt <> " no parse"])) 
+      Nothing -> (s, Left [f $ T.unpack $ txt <> " no parse"])) 
 
 -- consumes one or more spaces
 spaces :: Monoid w =>  WarnParser T.Text e w ()

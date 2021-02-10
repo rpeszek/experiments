@@ -175,31 +175,30 @@ emplTp =
 
 -- * WarnParser based example
 
-idWp = 123 `onKeywordWp` "id"
-nameWp1 = "Smith John"  `onKeywordWp` "last-first-name"
-nameWp2 = Warn.failParse ["first-last-name not implemented yet"]
-deptWp =  "Billing" `onKeywordWp` "dept"
-bossWp1 = "Jim K" `onKeywordWp` "boss1"     
-bossWp2 = "Kim J" `onKeywordWp` "boss2"    
+idWp = onKeywordWp 123 OtherErr "id"
+nameWp1 = onKeywordWp "Smith John" OtherErr "last-first-name"
+nameWp2 = Warn.failParse [OtherErr "first-last-name not implemented yet"]
+deptWp =  onKeywordWp "Billing" OtherErr "dept"
+bossWp1 = onKeywordWp "Jim K" BossP1Err "boss1"     
+bossWp2 = onKeywordWp "Kim J" BossP2Err "boss2"    
 bossWp3 = pure "Mij K bosses everyone" 
 
-
-
-onKeywordWp :: a -> T.Text -> Warn.WarnParser T.Text [String] [String] a
-onKeywordWp val key = Warn.string key >> Warn.spaces >> pure val
+onKeywordWp :: a -> (String -> EmployeeParseErr) -> T.Text -> Warn.WarnParser T.Text [EmployeeParseErr] [EmployeeParseErr] a
+onKeywordWp val f key = Warn.string f key >> Warn.spaces >> pure val
     
 -- |
 -- TWarnParser parser outputs, similar to @Either e (e, _)@ outputs.
+-- Example shows non-textual error output.
 --
 -- >>> Warn.runParser emplWp "id last-first-name dept boss1"
 -- Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
 --
 -- >>> Warn.runParser emplWp "id last-firs-name dept boss2"
--- Left ["last-first-name no parse","first-last-name not implemented yet"]
+-- Left [OtherErr "last-first-name no parse",OtherErr "first-last-name not implemented yet"]
 --
 -- >>> Warn.runParser emplWp "id last-first-name dept boss"
--- Right (["boss1 no parse","boss2 no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
-emplWp :: Warn.WarnParser T.Text [String] [String] Employee
+-- Right ([BossP1Err "boss1 no parse",BossP2Err "boss2 no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
+emplWp :: Warn.WarnParser T.Text [EmployeeParseErr] [EmployeeParseErr] Employee
 emplWp = 
    Employee 
    <$> idWp

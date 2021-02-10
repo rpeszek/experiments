@@ -24,7 +24,7 @@ import           Control.Applicative
 
 import qualified Data.List as L
 
-import           Alternative.Example
+import           Alternative.Example hiding (EmployeeParseErr(..))
 import           Prototype.Recover
 import           Prototype.Vlternative
 
