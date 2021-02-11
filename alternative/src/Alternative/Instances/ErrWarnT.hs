@@ -27,6 +27,11 @@ errWarn m = ErrWarnT (pure m)
 err :: Monad m => e -> ErrWarnT e w m a
 err e = errWarn (Left e)
 
+recoverEwt :: forall e w m a . (Monad m, Monoid w) => ErrWarnT e w m a -> ErrWarnT e w m (Either e (w,a))
+recoverEwt (ErrWarnT m) = ErrWarnT $ do 
+    ewt <- m
+    pure $ Right (mempty, ewt)
+
 -- |
 -- apply ErrWarn semantics to ErrWarnT
 -- reduced to lists to avoid weird monoids

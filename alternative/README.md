@@ -17,6 +17,7 @@ Comparison definitions
 
 Proof of concept work on Alternative and MonadPlus replacements 
 
+* `Prototype.Recover` - stronger version of `MonadPlus` with semantics focused on errors and warnings.
 * `Prototype.Vlternative`
 * `Prototype.WonadPlus`
 

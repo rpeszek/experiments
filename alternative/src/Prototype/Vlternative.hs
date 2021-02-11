@@ -18,6 +18,7 @@ import           Control.Applicative
 
 import           Prototype.Recover
 import           Alternative.Instances.ErrWarn
+import           Alternative.Instances.ErrWarnT
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 
@@ -93,15 +94,15 @@ isSuccess = fmap (either (const False) (const True)) . recoverResult @ e @ w
 
 
 
--- * instances (TODO instances are permissively allowing any questionable Monoids including Data.Monoid.First)
+-- * instances (TODO instances using [] instead of general Monoids to avoid likes of Data.Monoid.First)
 
-instance Monoid e => Vlternative e (ErrWarn e) where
+instance  Vlternative [e] (ErrWarn [e]) where
     failure e = EW $ Left e
+    a <-> b = a <|> b
 
-    EW (Left e1) <-> EW (Left e2) = EW (Left $ e1 <> e2)
-    EW (Left e1) <-> EW (Right (w2, r)) = EW $ Right (e1 <> w2, r)
-    l@(EW (Right _)) <-> _ = l
-
+instance (Monad m)=> Vlternative [e] (Reord ErrWarnT m [e]) where
+    failure = Reord . err
+    Reord a <-> Reord b = Reord $ a <|> b
 
 instance Monoid e => Vlternative e (Trad.TraditionalParser s) where
     failure = Trad.failParse
@@ -111,12 +112,6 @@ instance Monoid e => Vlternative e (Warn.WarnParser s e) where
     failure = Warn.failParse
     a <-> b = a <|> b
 
-instance Applicative f => Applicative (F2Lift f e) where
-    pure x = F2Lift $ pure x
-    F2Lift a <*> F2Lift b = F2Lift $ a <*> b
-
-instance Monad m => Monad (F2Lift m e) where
-    F2Lift a >>= f = F2Lift $ a >>= (unF2Lift . f)    
 
 instance Vlternative () (F2Lift Maybe) where
     failure _ = F2Lift Nothing

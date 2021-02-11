@@ -107,26 +107,35 @@ emplP' txt =
 -- Right (Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
 --
 -- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-firs-name dept boss2"
--- Right (Left [OtherErr "nameP1 no parse",OtherErr "nameP2 no parse"])
+-- Right (Left [Name1Err "no parse",Name2Err "no parse"])
 --
 -- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss"
 -- Right (Right ([BossP1Err "no parse",BossP2Err "no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"}))
-emplTrP :: Trf.ErrWarnT [EmployeeParseErr] [EmployeeParseErr] (AT.Parser B.ByteString) Employee
+emplTrP :: Trf.ErrWarnT [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] (AT.Parser B.ByteString) Employee
 emplTrP = 
    Employee 
-   <$> lft [OtherErr "idP no parse"] idP
-   <*> (lft [OtherErr "nameP1 no parse"] nameP1 <|> lft [OtherErr "nameP2 no parse"] nameP2)
+   <$> lft [IdErr "no parse"] idP
+   <*> (lft [Name1Err "no parse"] nameP1 <|> lft [Name2Err "no parse"] nameP2)
    <*> lft [OtherErr "deptP no parse"] deptP
    <*> (lft [BossP1Err "no parse"] bossP1 <|> lft [BossP2Err "no parse"] bossP2 <|> lft [BossP3Err "no parse"] bossP3)  
    where
-        lft :: forall a . [EmployeeParseErr] -> AT.Parser B.ByteString a ->  Trf.ErrWarnT [EmployeeParseErr] [EmployeeParseErr] (AT.Parser B.ByteString) a
+        -- parser does not fail consuming the same input
+        lft :: forall a . [EmployeeParseErr T.Text] -> AT.Parser B.ByteString a ->  Trf.ErrWarnT [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] (AT.Parser B.ByteString) a
         lft msg p = do
-           res :: Either a [EmployeeParseErr] <- lift $ A.eitherP p (pure msg)
+           res :: Either a [EmployeeParseErr T.Text] <- lift $ A.eitherP p (pure msg)
            case res of 
-              Right _ -> Trf.err msg
+              Right _ -> Trf.err msg -- fails in ErrWarnT
               Left r -> pure r
 
-data EmployeeParseErr = BossP1Err String | BossP2Err String | BossP3Err String | OtherErr String deriving (Eq, Show)
+data EmployeeParseErr s = 
+   IdErr s
+   | Name1Err s
+   | Name2Err s
+   | BossP1Err s 
+   | BossP2Err s 
+   | BossP3Err s 
+   | OtherErr s 
+     deriving (Eq, Show, Functor)
 
 
 
@@ -183,7 +192,7 @@ bossWp1 = onKeywordWp "Jim K" BossP1Err "boss1"
 bossWp2 = onKeywordWp "Kim J" BossP2Err "boss2"    
 bossWp3 = pure "Mij K bosses everyone" 
 
-onKeywordWp :: a -> (String -> EmployeeParseErr) -> T.Text -> Warn.WarnParser T.Text [EmployeeParseErr] [EmployeeParseErr] a
+onKeywordWp :: a -> (T.Text -> EmployeeParseErr T.Text) -> T.Text -> Warn.WarnParser T.Text [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] a
 onKeywordWp val f key = Warn.string f key >> Warn.spaces >> pure val
     
 -- |
@@ -198,7 +207,7 @@ onKeywordWp val f key = Warn.string f key >> Warn.spaces >> pure val
 --
 -- >>> Warn.runParser emplWp "id last-first-name dept boss"
 -- Right ([BossP1Err "boss1 no parse",BossP2Err "boss2 no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
-emplWp :: Warn.WarnParser T.Text [EmployeeParseErr] [EmployeeParseErr] Employee
+emplWp :: Warn.WarnParser T.Text [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] Employee
 emplWp = 
    Employee 
    <$> idWp

@@ -11,6 +11,8 @@ module Prototype.WonadPlus where
    
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
+import           Alternative.Instances.ErrWarnT
+import           Alternative.Instances.ErrWarn
 
 import           Prototype.Vlternative () -- temp orphans 
 import           Prototype.Recover
@@ -27,11 +29,14 @@ class Monad (m e) => WonadPlus e m where
     wplus' a b = wplus a (const b)
 
 
+-- In case of parsers first param `a` will be backtracked when it fails (@a@ runs in @recover@)
+-- this matches e.g. trifecta's backtracking behavior
 recoverWplus :: forall w e m a. (Monad (m e), Recover e w (m e)) => m e a -> (e -> m e a) -> m e a
 recoverWplus a f = do 
         er <- recover @e @w a
         case er of
-            Left e -> f e
+            Left e -> do 
+                f e
             Right _ -> a
 
 
@@ -89,3 +94,18 @@ instance Monoid e => WonadPlus e (Warn.WarnParser s e) where
 
 instance Monoid e => WonadPlusStream e (Warn.WarnParser s e) where 
     wsome = recoverWsome @e
+
+instance (Monad m) => WonadPlus [e] (Reord ErrWarnT m [e]) where
+    wfail = Reord . err
+    wplus = recoverWplus @ [e]
+
+instance (Monad m) =>  WonadPlusStream [e] (Reord ErrWarnT m [e]) where 
+    wsome = recoverWsome @ [e]
+
+
+instance WonadPlus [e] (ErrWarn [e]) where
+    wfail e = EW $ Left e
+    wplus = recoverWplus @ [e]
+
+instance  WonadPlusStream [e] (ErrWarn[e]) where 
+    wsome = recoverWsome @ [e]
