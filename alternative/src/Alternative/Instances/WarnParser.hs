@@ -72,7 +72,7 @@ failParse e = P $ \stream -> (stream, Left e)
 -- | does not consume input if failed
 -- >>> testParser (string id "some-key") "some-key boo" 
 -- (" boo",Right ((),"some-key"))
-string :: Monoid w => (T.Text -> e) -> T.Text -> WarnParser T.Text [e] w T.Text 
+string :: (Monoid w) => (T.Text -> e) -> T.Text -> WarnParser T.Text [e] w T.Text 
 string f txt = P (\s -> case T.stripPrefix txt s of
       Just rest -> (rest, Right (mempty, txt))
       Nothing -> (s, Left [f $ txt <> " no parse"])) 

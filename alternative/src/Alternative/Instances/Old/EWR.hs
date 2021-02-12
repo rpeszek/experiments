@@ -59,11 +59,8 @@ instance (Monoid w) => Monad (ErrWarnRdr r e w) where
                             Left e -> Left e
         )
 
--- |
--- A more general @instance (Monoid e) => Alternative (ErrWarnRdr r e e)@ would be
--- questionable with some monoids like @First@ or @Last@.
--- 
-instance Alternative (ErrWarnRdr r [e] [e]) where    
+
+instance Monoid e => Alternative (ErrWarnRdr r e e) where    
 -- instance (Monoid e) => Alternative (ErrWarnRdr r e e) where 
     empty  = EWR . const $ Left mempty
     EWR f <|> EWR g = EWR (\r ->

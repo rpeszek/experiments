@@ -31,18 +31,17 @@ instance (Monoid w) => Monad (ErrWarn e w) where
             EW (Right (v, b)) -> EW (Right (u <> v, b))
             EW (Left e) -> EW (Left e)
 
--- |
--- A more general @instance (Monoid e) => Alternative (ErrWarn e e)@ would be
--- questionable with some monoids like @First@ or @Last@.
---
--- However using `Max` would be interesting!
-instance Alternative (ErrWarn [e] [e]) where 
+
+instance Monoid e => Alternative (ErrWarn e e) where 
 -- instance (Monoid e) => Alternative (ErrWarn e e) where 
     empty  = EW $ Left mempty
-    EW (Left e1) <|> EW (Left e2) = EW (Left $ e1 <> e2)
-    EW (Left e1) <|> EW (Right (w2, r)) = EW $ Right (e1 <> w2, r)
-    l@(EW (Right _)) <|> _ = l
+    (<|>) = altEw
 
 -- instance (Monoid e) => MonadPlus (ErrWarn e e)
-instance MonadPlus (ErrWarn [e] [e])
+instance Monoid e => MonadPlus (ErrWarn e e)
+
+altEw :: Semigroup e => ErrWarn e e a -> ErrWarn e e a -> ErrWarn e e a
+(EW (Left e1))  `altEw` (EW (Left e2)) = EW (Left $ e1 <> e2)
+(EW (Left e1))  `altEw` (EW (Right (w2, r))) = EW $ Right (e1 <> w2, r)
+l@(EW (Right _)) `altEw`  _ = l
 

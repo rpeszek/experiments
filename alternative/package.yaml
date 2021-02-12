@@ -29,6 +29,7 @@ dependencies:
 - transformers
 - mtl
 - trifecta
+- megaparsec
 
 library:
   source-dirs: src

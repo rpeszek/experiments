@@ -35,7 +35,7 @@ recoverEwt (ErrWarnT m) = ErrWarnT $ do
 -- |
 -- apply ErrWarn semantics to ErrWarnT
 -- reduced to lists to avoid weird monoids
-instance Monad m => Alternative (ErrWarnT [e] [e] m) where
+instance (Monad m, Monoid e) => Alternative (ErrWarnT e e m) where
    empty = ErrWarnT $ pure $ Left mempty
    (ErrWarnT m1) <|> (ErrWarnT m2) = ErrWarnT $ do
        e1 <- m1

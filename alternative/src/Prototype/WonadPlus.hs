@@ -6,7 +6,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 -- |
--- Experiments with possible alternatives to `MonadPlus`
+-- Conceptual experiment with alternative to `MonadPlus`
 module Prototype.WonadPlus where
    
 import qualified Alternative.Instances.TraditionalParser as Trad
@@ -95,17 +95,17 @@ instance Monoid e => WonadPlus e (Warn.WarnParser s e) where
 instance Monoid e => WonadPlusStream e (Warn.WarnParser s e) where 
     wsome = recoverWsome @e
 
-instance (Monad m) => WonadPlus [e] (Reord ErrWarnT m [e]) where
+instance (Monad m, Monoid e) => WonadPlus e (Reord ErrWarnT m e) where
     wfail = Reord . err
-    wplus = recoverWplus @ [e]
+    wplus = recoverWplus @ e
 
-instance (Monad m) =>  WonadPlusStream [e] (Reord ErrWarnT m [e]) where 
-    wsome = recoverWsome @ [e]
+instance (Monad m, Monoid e) =>  WonadPlusStream e (Reord ErrWarnT m e) where 
+    wsome = recoverWsome @ e
 
 
-instance WonadPlus [e] (ErrWarn [e]) where
+instance Monoid e => WonadPlus e (ErrWarn e) where
     wfail e = EW $ Left e
-    wplus = recoverWplus @ [e]
+    wplus = recoverWplus @ e
 
-instance  WonadPlusStream [e] (ErrWarn[e]) where 
-    wsome = recoverWsome @ [e]
+instance Monoid e => WonadPlusStream e (ErrWarn e) where 
+    wsome = recoverWsome @ e

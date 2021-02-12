@@ -28,6 +28,8 @@ import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 
 -- |
+-- Conceptual experiment with alternative to `MonadPlus`
+--
 -- If type constructor f stores error and/or warning information then
 -- "recover" that information.
 --
@@ -139,6 +141,8 @@ recoverErrorsAndWarns = fmap (id ||| fst) . recover
 recoverResult :: forall e w f a. Recover e w f => f a -> f (Either e a)
 recoverResult = fmap (fmap snd) . recover @e @w
 
+isSuccess :: forall e w f a. (Recover e w f) => f a -> f Bool
+isSuccess = fmap (either (const False) (const True)) . recoverResult @e @w
 
 -- |
 -- more general version, currently not used

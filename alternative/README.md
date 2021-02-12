@@ -15,11 +15,11 @@ Comparison definitions
 * `Alternative.Instances.TraditionalParser`
 * _attoparsec_ is used for comparison as well
 
-Proof of concept work on Alternative and MonadPlus replacements 
+Proof of concept conceptual work on Alternative and MonadPlus replacements 
 
 * `Prototype.Recover` - stronger version of `MonadPlus` with semantics focused on errors and warnings.
-* `Prototype.Vlternative`
-* `Prototype.WonadPlus`
+* `Prototype.Vlternative` - mostly just adding failure type variable to typeclass definition
+* `Prototype.WonadPlus` - `many` `some` return error information
 
 Examples:
 
