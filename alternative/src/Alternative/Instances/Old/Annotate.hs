@@ -88,13 +88,14 @@ instance (Monoid e, CheckSuccess f, AlternativeMinus f) => Alternative (Annotate
 -- Annotate (Right "") (Just (Right ("",1)))
 -- >>> recover' @ String (annotate "boo" $ Nothing)
 -- Annotate (Right "") (Just (Left "boo"))
--- >>> recover' @ String ((annotate "boo" $ Nothing) <-> (annotate "" $ Just 1))
+-- >>> recover' @ String ((annotate "boo" $ Nothing) <||> (annotate "" $ Just 1))
 -- Annotate (Right "") (Just (Right ("boo",1)))
--- >>> recover' @ String ((annotate "foo" $ Nothing) <-> (annotate "bar" $ Nothing))
+-- >>> recover' @ String ((annotate "foo" $ Nothing) <||> (annotate "bar" $ Nothing))
 -- Annotate (Right "") (Just (Left "foobar"))
 instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Vlternative e (Annotate f) where
     failure e = Annotate (Left e) noOpFail
-    a <-> b = a <|> b
+instance (Monoid e,  CheckSuccess f, AlternativeMinus f) => Semigroup2 e (Annotate f) where
+    a <||> b = a <|> b
 
 instance (Monoid e,  CheckSuccess f, Applicative f) => Recover e e (Annotate f e) where
     recover a = Annotate (Right mempty) $ check' a

@@ -75,7 +75,8 @@ instance Monoid e => Alternative (ErrWarnRdr r e e) where
 
 instance (Monoid e) => Vlternative e (ErrWarnRdr r e) where 
     failure e = EWR . const $ Left e
-    EWR f <-> EWR g = EWR (\r ->
+instance (Monoid e) => Semigroup2 e (ErrWarnRdr r e) where     
+    EWR f <||> EWR g = EWR (\r ->
              case (f r, g r) of 
                 (Left e1, Left e2) -> Left $ e1 <> e2
                 (Left e1, Right (w2, x)) -> Right (e1 <> w2, x)
@@ -130,7 +131,7 @@ emplP'' =
 testV :: ErrWarnRdr B.ByteString [EmployeeEx] [EmployeeEx] Employee
 testV = do
         id <- rew OtherErr idP
-        let rewNm = rew Name1Err nameP1 <-> rew Name2Err nameP2'
+        let rewNm = rew Name1Err nameP1 <||> rew Name2Err nameP2'
         nm <- rewNm
         wrn <- recoverErrorsAndWarns @ [EmployeeEx] $ rewNm
         -- nameP1 errors go with boss2, rest with boss1 or boss3
@@ -139,7 +140,7 @@ testV = do
                 then 
                     warn [Name1Err "Name1 Failed"] $ rew OtherErr bossP2 -- TODO nice replace error semantics similar to warn
                 else 
-                    (rew OtherErr bossP1) <-> (rew OtherErr bossP3)   
+                    (rew OtherErr bossP1) <||> (rew OtherErr bossP3)   
         pure $ Employee id nm dep boss
     where
         rew :: (String -> EmployeeEx) -> AT.Parser B.ByteString a ->  ErrWarnRdr B.ByteString [EmployeeEx] [EmployeeEx] a

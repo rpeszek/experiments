@@ -32,9 +32,9 @@ emplV :: B.ByteString -> ErrWarn [String] [String] Employee
 emplV txt = 
    Employee 
    <$> ew idP 
-   <*> (ew nameP1  <-> ew nameP2 )
+   <*> (ew nameP1  <||> ew nameP2 )
    <*> ew deptP 
-   <*> (ew bossP1  <-> ew bossP2 <-> ew bossP3)
+   <*> (ew bossP1  <||> ew bossP2 <||> ew bossP3)
    where
         ew p = cnvt p txt
 

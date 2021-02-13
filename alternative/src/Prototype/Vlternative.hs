@@ -34,44 +34,54 @@ import qualified Alternative.Instances.WarnParser as Warn
 -- translations:
 --
 -- empty = failure mempty
--- <|>   = <->
+-- <|>   = <||>
 -- 
 
-class (Applicative (f e)) => Vlternative e f where
+class Semigroup2 e f where 
+    (<||>)   :: f e a -> f e a -> f e a 
+
+class (Applicative (f e), Semigroup2 e f) => Vlternative e f where
     failure :: e -> f e a  -- name @fail@ is taken, should terminate applicative, monad
-    (<->)   :: f e a -> f e a -> f e a  -- ^ alternative like combinator with @|@ twisted
                                                       
     warn ::  e -> f e a -> f e a
-    warn er a = failure er <-> a 
+    warn er a = failure er <||> a 
 
 -- | note no need for monoid contraint with nonsensical Left mempty
 instance Semigroup e => Vlternative e Either where
     failure = Left
-    Left e1 <-> Left e2 = Left $ e1 <> e2 
-    Left e1 <-> Right a = Right a
-    Right a <-> _ = Right a
+
+instance Semigroup e  => Semigroup2 e Either where
+    Left e1 <||> Left e2 = Left $ e1 <> e2 
+    Left e1 <||> Right a = Right a
+    Right a <||> _ = Right a
 
 -- note this needs monoid because e is both error and accumulating warning, mempty means no warnings have accumulated
 instance Monoid e => Vlternative e (ErrWarn e) where
     failure e = EW $ Left e
-    (<->) =  altEw
+
+instance Semigroup e => Semigroup2 e (ErrWarn e) where
+    (<||>) =  altEw
 
 instance (Monad m, Monoid e)=> Vlternative e (Reord ErrWarnT m e) where
     failure = Reord . err
-    Reord a <-> Reord b = Reord $ a <|> b
+instance (Monad m, Monoid e)=> Semigroup2 e (Reord ErrWarnT m e) where    
+    Reord a <||> Reord b = Reord $ a <|> b
 
 instance Monoid e => Vlternative e (Trad.TraditionalParser s) where
     failure = Trad.failParse
-    a <-> b = a <|> b
+instance Monoid e => Semigroup2 e (Trad.TraditionalParser s) where
+    a <||> b = a <|> b
 
 instance Monoid e => Vlternative e (Warn.WarnParser s e) where
     failure = Warn.failParse
-    a <-> b = a <|> b
+instance Monoid e => Semigroup2 e (Warn.WarnParser s e) where
+    a <||> b = a <|> b
 
 
 instance Vlternative () (F2Lift Maybe) where
     failure _ = F2Lift Nothing
-    F2Lift a <-> F2Lift b = F2Lift $ a <|> b
+instance Semigroup2 () (F2Lift Maybe) where
+    F2Lift a <||> F2Lift b = F2Lift $ a <|> b
 
 
 
@@ -91,7 +101,7 @@ recoverVlternativeCollect :: forall e f a . (Monad (f e), Monoid e, Recover e e 
 recoverVlternativeCollect  ae be = do
         era <- recover @e @e ae
         case era of 
-            Right _ -> ae -- run full a effect
+            Right _ -> ae -- run full effect
             Left e -> fmap ((e <>) *** id) be
 
 -- | Left bias version, collect all version should also be possible
@@ -129,25 +139,25 @@ instance VlternativeCollect () (F2Lift Maybe) where
 -- recover (failure e) = pure (Left e)
 -- recover (pure a) = pure (Right (mempty, a))   
 --
--- ((failure e1) <-> pure (e2, a)) = pure (Right (e1 <> e2, a))   (1) 
--- ((failure e1) <-> (failure e2)) = failure (e1 <> e2)           (1) 
--- (pure (e1, a) <-> (failure e1)) = pure (?, a) -- typically ? = e1, could be relaxed (2) 
+-- ((failure e1) <||> pure (e2, a)) = pure (Right (e1 <> e2, a))   (1) 
+-- ((failure e1) <||> (failure e2)) = failure (e1 <> e2)           (1) 
+-- (pure (e1, a) <||> (failure e1)) = pure (?, a) -- typically ? = e1, could be relaxed (2) 
 --
 -- (?=) ignores warnings if any
 --
 -- def: x ?= y iff recovered value is the same after errors / warnings are ignored
 -- 
 --
--- u <-> (v <-> w)  =  (u <-> v) <-> w           -- (3)
+-- u <||> (v <||> w)  =  (u <||> v) <||> w           -- (3)
 --
 -- f <*> failure e  ?= failure e                   -- (4 gen right zero) some failure for some ?
 --
--- (a <-> b) <*> c  ?= (a <*> c) <-> (b <*> c)    -- (5) Left Distribution
+-- (a <||> b) <*> c  ?= (a <*> c) <||> (b <*> c)    -- (5) Left Distribution
 -- (a <*> (b <|> c)) ?= (a <*> b) <|> (a <*> c)   -- (6) Right Distribution  
 --
 --
--- (pure (e, a)) <-> x = pure (e, a)              -- (7 left catch) 
--- (pure (e, a)) <-> x = pure (?, a)              -- relaxed 7
+-- (pure (e, a)) <||> x = pure (e, a)              -- (7 left catch) 
+-- (pure (e, a)) <||> x = pure (?, a)              -- relaxed 7
 --
 --
 -- considering critical errors, needs more thinking
@@ -155,8 +165,8 @@ instance VlternativeCollect () (F2Lift Maybe) where
 -- conceptually (1) will not hold and remaining laws will need to be relaxed, described in some way 
 --
 -- recover (crit) /= pure x - for any x
--- (crit <-> pure a) =  crit
--- (pure (e,a) <-> crit) = (pure (e,a)) 
+-- (crit <||> pure a) =  crit
+-- (pure (e,a) <||> crit) = (pure (e,a)) 
 -- @
 --
 laws = () :: ()
