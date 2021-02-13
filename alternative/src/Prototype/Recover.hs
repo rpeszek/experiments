@@ -6,7 +6,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE KindSignatures #-}
+
 
 -- | 
 -- @Recover@ typeclasses provide semantics for learning about errors and warnings
@@ -17,8 +17,11 @@
 --
 module Prototype.Recover where
 
+import           Prototype.Common    
+
 import           Data.Functor.Identity 
 import           Control.Arrow
+import           Control.Applicative
 -- import           Control.Monad
 
 
@@ -27,8 +30,12 @@ import           Alternative.Instances.ErrWarnT
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 
+-- $setup
+-- >>> :set -XOverloadedStrings -XTypeApplications
+-- >>> import qualified Data.Text as T
+
 -- |
--- Conceptual experiment with alternative to `MonadPlus`
+-- Conceptual experiment
 --
 -- If type constructor f stores error and/or warning information then
 -- "recover" that information.
@@ -56,8 +63,8 @@ import qualified Alternative.Instances.WarnParser as Warn
 -- For computations like Parsers this is expected to backtrack when evaluated. That is:
 --
 -- @
--- fmap snd $ (,) <$> recover (c) <*> c  = c  
--- recover c >> c = c
+-- fmap snd $ (,) <$> recover x <*> c  = c  
+-- recover x >> c = c
 -- @
 --
 -- Laws are documented with Vlternative laws
@@ -97,13 +104,16 @@ instance (Monad m, Monoid w) => Recover e w (ErrWarnT e w m) where
 instance Recover e () (Trad.TraditionalParser s e) where
     recover a = fmap (fmap ((),)) $ Trad.tryLookAhead a
 
-instance Monoid e => Recover e e (Warn.WarnParser s e e) where
-    recover a = Warn.tryLookAhead a   
+instance Monoid w => Recover e w (Warn.WarnParser s e w) where
+    recover = Warn.tryLookAhead   
 
 
 instance Recover () () (F2Lift Maybe ()) where
     recover (F2Lift Nothing) = F2Lift $ Just $ Left ()
     recover (F2Lift (Just a)) = F2Lift $ Just $ Right ((), a)   
+
+instance Recover e w (f e w m) => Recover e w (Reord f m e w) where
+   recover (Reord fa) = Reord $ recover fa    
 
 
 -- * combinators
@@ -117,6 +127,25 @@ recoverMplus a b = do
             Right _ -> a -- run full a effect
             Left _ -> b
 
+-- |
+-- Consumes input and recovers, this assumes that a <|> b will consume input on a.
+-- if <|> backtracks on a failure this will also backtrack on failures.
+-- Applicative style.
+--
+-- could be useful on typeclass level    
+--     
+-- >>> Warn.testParser (recoverConsumeA @ [T.Text] @ [T.Text] (Warn.string id "sk" <|> Warn.string id "ss")) "sskboo"
+-- ("kboo",Right (["sk no parse"],Right (["sk no parse"],"ss")))
+recoverConsumeA :: forall w e f a . (Recover e w (f e), Alternative (f e)) => f e a -> f e (Either e (w,a))
+recoverConsumeA a = go <$> (recover @e @w a) <*> ( (fmap (consume) a) <|> (fmap ignore $ recover @e @w a)) 
+  where 
+     go :: Either e (w, a) -> () -> Either e (w, a)
+     go r _ = r
+     -- mostly not needed, const works
+     consume :: b -> ()
+     consume x = seq x ()
+     ignore :: b -> ()
+     ignore = const ()
 
 recoverF :: forall e w f a c. Recover e w f => (Either e (w, a) -> c) -> f a -> f c
 recoverF f = fmap f . recover
@@ -153,28 +182,3 @@ checkRecoverableSuccess :: forall e w f a. (Recoverable e w f Identity) => f a -
 checkRecoverableSuccess = either (const False) (const True) . runIdentity . recoverIn @e @w
 
 
--- * wrapper types
-
--- |
--- convenience new type allows to treat something like @Maybe a@ as @Maybe err e@
-newtype F2Lift f e a = F2Lift {unF2Lift :: f a} deriving (Show, Eq, Functor)
-
-instance Applicative f => Applicative (F2Lift f e) where
-    pure x = F2Lift $ pure x
-    F2Lift a <*> F2Lift b = F2Lift $ a <*> b
-
-instance Monad m => Monad (F2Lift m e) where
-    F2Lift a >>= f = F2Lift $ a >>= (unF2Lift . f)  
-
-
-newtype Reord f (m :: * -> *) e w a = Reord {unReord :: f e w m a} deriving (Show, Eq, Functor)
-
-instance Applicative (f e w m) => Applicative (Reord f m e w) where
-    pure x = Reord $ pure x
-    Reord a <*> Reord b = Reord $ a <*> b
-
-instance Monad (f e w m) => Monad (Reord f m e w) where
-    Reord a >>= f = Reord $ a >>= (unReord . f)     
-
-instance Recover e w (f e w m) => Recover e w (Reord f m e w) where
-   recover (Reord fa) = Reord $ recover fa

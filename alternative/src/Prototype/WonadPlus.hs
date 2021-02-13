@@ -9,13 +9,15 @@
 -- Conceptual experiment with alternative to `MonadPlus`
 module Prototype.WonadPlus where
    
+import           Prototype.Common
+import           Prototype.Recover
+
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
 import           Alternative.Instances.ErrWarnT
 import           Alternative.Instances.ErrWarn
 
-import           Prototype.Vlternative () -- temp orphans 
-import           Prototype.Recover
+
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -40,16 +42,7 @@ recoverWplus a f = do
             Right _ -> a
 
 
--- | 
--- list that terminates with information `e` at the end
---
--- needed for @wsome@ and @wsome@
-data SList e a = Last e | Snoc (SList e a) a deriving (Show, Eq, Functor)
 
-stake :: Int -> SList e a -> (Maybe e, [a])
-stake n (Last e) = (Just e, [])
-stake 0 (Snoc lst a) = (Nothing, [])
-stake n (Snoc lst a) = fmap (a :) (stake (n-1) lst) 
 
 -- | 
 -- @some@ and @many@ make sense only for some computations

@@ -15,9 +15,12 @@
 -- @many@ and @some@ are implemented in @WonadPlus@ at this moment only
 module Prototype.Vlternative where
 
+import           Prototype.Common 
+import           Prototype.Recover
+
 import           Control.Applicative
 import           Control.Arrow
-import           Prototype.Recover
+
 import           Alternative.Instances.ErrWarn
 import           Alternative.Instances.ErrWarnT
 import qualified Alternative.Instances.TraditionalParser as Trad
@@ -83,7 +86,14 @@ instance Vlternative () (F2Lift Maybe) where
 instance Semigroup2 () (F2Lift Maybe) where
     F2Lift a <||> F2Lift b = F2Lift $ a <|> b
 
-
+-- 
+-- fails on success, could be useful on typeclass level
+flipSuccess :: forall w e f a . (Recover e w (f e), Vlternative e f, Monad (f e)) => e -> f e a -> f e (Either e (w, a))
+flipSuccess e ma = do 
+    a :: Either e (w, a) <- recover ma
+    case a of 
+        Right _ -> failure e
+        Left er -> pure $ Left er
 
 
 -- * VlternativeCollect
