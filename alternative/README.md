@@ -10,21 +10,21 @@ Contains examples `Alternative` instances that care about errors.
 * `Alternative.Instances.WarnParser` contains  `s -> (s, Either e (w,_))` parser instance
 
 
-Comparison definitions
+Comparison instances
 
 * `Alternative.Instances.TraditionalParser`
 * _attoparsec_ is used for comparison as well
 
 Proof of concept conceptual work on Alternative and MonadPlus replacements 
 
-* `Prototype.Recover` - stronger version of `MonadPlus` with semantics focused on errors and warnings.
-* `Prototype.Vlternative` - mostly just adding failure type variable to typeclass definition
+* `Prototype.Recover` - recover errors and warnings in the same Functor, ends up being stronger version of `MonadPlus`
+* `Prototype.Vlternative` - straightforward Alternative replacements (Semigroup2, etc)
 * `Prototype.WonadPlus` - `many` `some` return error information
 
 Examples:
 
-* `Alternative.Examples`
-* `Prototype.Vlternative.Examples`
+* `Alternative.Examples` - examples supporting blog post and more
+* `Prototype.Vlternative.Examples` - not much here yet
 
 
 
