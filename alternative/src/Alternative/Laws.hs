@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- code for Laws section of my blog post
 module Alternative.Laws where
 
 import qualified Data.Attoparsec.ByteString as A

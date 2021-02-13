@@ -6,6 +6,9 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
+-- |
+-- Extended examples supporting my blog post.
+-- Examples showing improved instances of Applicative.
 module Alternative.Example where
 
 import qualified Data.ByteString as B
@@ -18,11 +21,11 @@ import           Control.Applicative
 
 
 import           Alternative.Instances.ErrWarn
-import           Alternative.Instances.REW 
-import           Alternative.Instances.Annotate
+import qualified Alternative.Instances.ErrWarnT as Trf
 
 import qualified Alternative.Instances.TraditionalParser as Trad
 import qualified Alternative.Instances.WarnParser as Warn
+import           Control.Monad.Trans.Class
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -96,55 +99,45 @@ emplP' txt =
         singleErr (Left e) = EW $ Left [e]
         singleErr (Right r) = EW $ Right ([], r)
 
+
 -- |
--- RdrWarnErr outputs 
+-- Transformer @ErrWarnT@ annotates failures.
 --
--- >>> runREW emplP'' $ "id last-first-name dept boss1"
--- Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
+-- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss1"
+-- Right (Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
 --
--- >>> runREW emplP'' "id last-firs-name dept boss2"
--- Left ["\"last-first-name\": not enough input","Failed reading: first-last-name not implemented yet"]
+-- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-firs-name dept boss2"
+-- Right (Left [Name1Err "no parse",Name2Err "no parse"])
 --
--- >>> runREW emplP'' "id last-first-name dept boss"
--- Right (["\"boss1\": not enough input","\"boss2\": not enough input"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
-emplP'' :: RdrWarnErr B.ByteString [String] [String] Employee
-emplP'' = 
+-- >>> A.parseOnly (Trf.runErrWarnT emplTrP) "id last-first-name dept boss"
+-- Right (Right ([BossP1Err "no parse",BossP2Err "no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"}))
+emplTrP :: Trf.ErrWarnT [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] (AT.Parser B.ByteString) Employee
+emplTrP = 
    Employee 
-   <$> rew idP 
-   <*> (rew nameP1  <|> rew nameP2 )
-   <*> rew deptP 
-   <*> (rew bossP1  <|> rew bossP2 <|> rew bossP3)
+   <$> lft [IdErr "no parse"] idP
+   <*> (lft [Name1Err "no parse"] nameP1 <|> lft [Name2Err "no parse"] nameP2)
+   <*> lft [OtherErr "deptP no parse"] deptP
+   <*> (lft [BossP1Err "no parse"] bossP1 <|> lft [BossP2Err "no parse"] bossP2 <|> lft [BossP3Err "no parse"] bossP3)  
    where
-        rew :: AT.Parser B.ByteString a ->  RdrWarnErr B.ByteString [String] [String] a
-        rew p = REW $ singleErr . A.parseOnly p
+        -- parser does not fail consuming the same input
+        lft :: forall a . [EmployeeParseErr T.Text] -> AT.Parser B.ByteString a ->  Trf.ErrWarnT [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] (AT.Parser B.ByteString) a
+        lft msg p = do
+           res :: Either a [EmployeeParseErr T.Text] <- lift $ A.eitherP p (pure msg)
+           case res of 
+              Right _ -> Trf.err msg -- fails in ErrWarnT
+              Left r -> pure r
 
-        singleErr :: Either e a -> Either [e] ([e], a)
-        singleErr (Left e) =  Left [e]
-        singleErr (Right r) = Right ([], r)
+data EmployeeParseErr s = 
+   IdErr s
+   | Name1Err s
+   | Name2Err s
+   | BossP1Err s 
+   | BossP2Err s 
+   | BossP3Err s 
+   | OtherErr s 
+     deriving (Eq, Show, Functor)
 
--- |
--- Annotate outputs to see which failed.
---
--- >>> check . emplAnn $ "id last-first-name dept boss1"
--- Just ([],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"}))
---
--- Note more errors reported in this example (because <*> uses `Validation` like definition)
---
--- >>> check . emplAnn $ "id last-firs-name dept boss2"
--- Just (["nameP1","nameP2","bossP1"],Nothing)
---
--- >>> check . emplAnn $ "id last-first-name dept boss"
--- Just (["bossP1","bossP2"],Just (Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"}))
-emplAnn ::  B.ByteString -> Annotate Maybe [String] Employee
-emplAnn txt = 
-   Employee 
-   <$> annotate ["idP"] (mb idP)
-   <*> (annotate ["nameP1"] (mb nameP1) <|> annotate ["nameP2"] (mb nameP2))
-   <*> annotate ["deptP"] (mb deptP)
-   <*> (annotate ["bossP1"] (mb bossP1) <|> annotate ["bossP2"] (mb bossP2) <|> annotate ["bossP3"] (mb bossP3))  
-   where 
-     mb :: AT.Parser B.ByteString a -> Maybe a
-     mb p = either (const Nothing) Just $ A.parseOnly p txt
+
 
 -- * TraditionalParser based example
 
@@ -191,31 +184,30 @@ emplTp =
 
 -- * WarnParser based example
 
-idWp = 123 `onKeywordWp` "id"
-nameWp1 = "Smith John"  `onKeywordWp` "last-first-name"
-nameWp2 = Warn.failParse ["first-last-name not implemented yet"]
-deptWp =  "Billing" `onKeywordWp` "dept"
-bossWp1 = "Jim K" `onKeywordWp` "boss1"     
-bossWp2 = "Kim J" `onKeywordWp` "boss2"    
+idWp = onKeywordWp 123 OtherErr "id"
+nameWp1 = onKeywordWp "Smith John" OtherErr "last-first-name"
+nameWp2 = Warn.failParse [OtherErr "first-last-name not implemented yet"]
+deptWp =  onKeywordWp "Billing" OtherErr "dept"
+bossWp1 = onKeywordWp "Jim K" BossP1Err "boss1"     
+bossWp2 = onKeywordWp "Kim J" BossP2Err "boss2"    
 bossWp3 = pure "Mij K bosses everyone" 
 
-
-
-onKeywordWp :: a -> T.Text -> Warn.WarnParser T.Text [String] [String] a
-onKeywordWp val key = Warn.string key >> Warn.spaces >> pure val
+onKeywordWp :: a -> (T.Text -> EmployeeParseErr T.Text) -> T.Text -> Warn.WarnParser T.Text [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] a
+onKeywordWp val f key = Warn.string f key >> Warn.spaces >> pure val
     
 -- |
 -- TWarnParser parser outputs, similar to @Either e (e, _)@ outputs.
+-- Example shows non-textual error output.
 --
 -- >>> Warn.runParser emplWp "id last-first-name dept boss1"
 -- Right ([],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Jim K"})
 --
 -- >>> Warn.runParser emplWp "id last-firs-name dept boss2"
--- Left ["last-first-name no parse","first-last-name not implemented yet"]
+-- Left [OtherErr "last-first-name no parse",OtherErr "first-last-name not implemented yet"]
 --
 -- >>> Warn.runParser emplWp "id last-first-name dept boss"
--- Right (["boss1 no parse","boss2 no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
-emplWp :: Warn.WarnParser T.Text [String] [String] Employee
+-- Right ([BossP1Err "boss1 no parse",BossP2Err "boss2 no parse"],Employee {id = 123, name = "Smith John", dept = "Billing", boss = "Mij K bosses everyone"})
+emplWp :: Warn.WarnParser T.Text [EmployeeParseErr T.Text] [EmployeeParseErr T.Text] Employee
 emplWp = 
    Employee 
    <$> idWp

@@ -26,6 +26,10 @@ dependencies:
 - mtl
 - containers
 - attoparsec
+- transformers
+- mtl
+- trifecta
+- megaparsec
 
 library:
   source-dirs: src
