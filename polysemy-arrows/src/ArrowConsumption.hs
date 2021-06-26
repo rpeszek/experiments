@@ -6,24 +6,17 @@ module ArrowConsumption where
 
 import qualified Control.Arrow as Arr
 import Polysemy
-import Polysemy.Input
-import Polysemy.Output    
+import SemArr  
 
 import Teletype
 
-type SemArr r a b = Arr.Kleisli (Sem r) a b
 
-constKl :: (Sem r) b -> SemArr r () b
-constKl c = Arr.Kleisli (const c)
-
-kl :: (a -> (Sem r) b )-> SemArr r a b
-kl = Arr.Kleisli
 
 readTTYA :: forall (r :: [Effect]). MemberWithError Teletype r => SemArr r () String
-readTTYA = constKl readTTY
+readTTYA = constSemArr readTTY
 
 writeTTYA :: forall (r :: [Effect]). MemberWithError Teletype r => SemArr r String ()
-writeTTYA = kl writeTTY
+writeTTYA = semArr writeTTY
 
 echoA :: Member Teletype r => SemArr r () ()
 echoA = proc _ -> do

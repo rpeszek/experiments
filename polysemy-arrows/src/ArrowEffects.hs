@@ -13,60 +13,41 @@ import Polysemy.Input
 import Polysemy.Output    
 
 import Teletype
-import ArrowConsumption
+
 import Data.Kind
-import Control.Category
-import qualified Control.Category as Cat
+-- import Control.Category
+-- import qualified Control.Category as Cat
 import Control.Arrow
 
 import FreeArr
-
-
--- h (ArrowMonad h) = (h, ()) >>> Arr.app
-
--- eval :: forall arr1 arr2 m a b . (Arrow arr1, Arrow arr2) => (forall x y . arr1 x y -> arr2 x y) -> ArrowEff arr1 m b -> arr2 a b 
--- eval fn (MkArrowEff arr1) = undefined
-
-data ArrowEff arr r b where
-  MkArrowEff :: arr () b -> ArrowEff arr r b
-
-arrowEffToKl :: Member (Embed m) r => (forall x y . arr x y ->  Arr.Kleisli m x y) -> Sem (ArrowEff arr ': r) a -> Sem r a
-arrowEffToKl fn = interpret \case
-  MkArrowEff arr   -> embed (Arr.runKleisli (fn arr) ())
-
-
--- | not interesting
-arrowToM :: Member (Embed (ArrowMonad arr)) r => Sem (ArrowEff arr ': r) a -> Sem r a
-arrowToM = interpret \case
-  MkArrowEff arr  -> embed (ArrowMonad arr)
+import SemArr
+import Eff2
 
 
 data Teletype2 a b where
   ReadTTY2  :: Teletype2 () String
   WriteTTY2 :: Teletype2 String ()
 
-readTTY2A :: forall (r :: [Effect]). Member (ArrowEff (FreeArr Teletype2)) r => SemArr r () String
-readTTY2A =  constKl readTTY2
+-- | arrow frienly combinator
+readTTY2A :: forall (r :: [Effect]). Member (Eff2 (FreeArr Teletype2)) r => SemArr r () String
+readTTY2A =  constSemArr readTTY2
 
--- -- forall (r :: [Effect]).
-readTTY2 :: forall (r :: [Effect]). Member (ArrowEff (FreeArr Teletype2)) r => Sem r String
-readTTY2 =  send (MkArrowEff (Effect ReadTTY2) :: ArrowEff (FreeArr Teletype2) (Sem r) String) 
+-- | monad frienly combinator, can be consumed by monadic programs and effects
+readTTY2 :: forall (r :: [Effect]). Member (Eff2 (FreeArr Teletype2)) r => Sem r String
+readTTY2 =  send (MkEff2 (Effect ReadTTY2) :: Eff2 (FreeArr Teletype2) (Sem r) String) 
 
-writeTTY2A :: forall (r :: [Effect]). Member (ArrowEff (FreeArr Teletype2)) r => SemArr r String ()
-writeTTY2A = kl writeTTY2
+writeTTY2A :: forall (r :: [Effect]). Member (Eff2 (FreeArr Teletype2)) r => SemArr r String ()
+writeTTY2A = semArr writeTTY2
 
-writeTTY2 :: forall (r :: [Effect]). Member (ArrowEff (FreeArr Teletype2)) r => String -> Sem r ()
-writeTTY2 s =  send (MkArrowEff (Pure (const s) >>> Effect WriteTTY2) :: ArrowEff (FreeArr Teletype2) (Sem r) ()) 
+writeTTY2 :: forall (r :: [Effect]). Member (Eff2 (FreeArr Teletype2)) r => String -> Sem r ()
+writeTTY2 s =  send (MkEff2 (Pure (const s) >>> Effect WriteTTY2) :: Eff2 (FreeArr Teletype2) (Sem r) ()) 
 
 tele2ToKlIO :: Teletype2 a b -> Arr.Kleisli IO a b
 tele2ToKlIO ReadTTY2 = Arr.Kleisli $ const getLine
 tele2ToKlIO WriteTTY2 = Arr.Kleisli putStrLn
 
-freeTele2ToKlIO :: FreeArr Teletype2 a b -> Arr.Kleisli IO a b
-freeTele2ToKlIO = liftComp tele2ToKlIO
 
-
-echo2A :: Member (ArrowEff (FreeArr Teletype2)) r => SemArr r () ()
+echo2A :: Member (Eff2 (FreeArr Teletype2)) r => SemArr r () ()
 echo2A = proc _ -> do
     i <- readTTY2A -< ()
     case i of 
@@ -75,33 +56,27 @@ echo2A = proc _ -> do
        _ ->  
            writeTTY2A -< "You said " <> i
 
+
+interpreter ::  r ~ '[Eff2 (FreeArr Teletype2), Embed IO] => SemArr r a b -> a -> IO b
+interpreter arr a = runM . embedEff2 (liftCompKl tele2ToKlIO)  $ Arr.runKleisli arr a
+
 testA2 :: IO ()
-testA2 = runM Cat.. arrowEffToKl freeTele2ToKlIO $ Arr.runKleisli echo2A ()
+testA2 = interpreter echo2A ()
+
+-- | more arrow like interpreter that chains SemArr's not Sem's
+interpreter' ::  r ~ '[Eff2 (FreeArr Teletype2), Embed IO] => SemArr r a b -> a -> IO b
+interpreter' arr = runM . Arr.runKleisli (interpretEff2AsSemArr embed (liftCompKl tele2ToKlIO) arr) 
+  
+
+data Echoer2 a b where
+  DoEcho2 :: Echoer2 () ()
+
+doEcho2 :: forall (r :: [Effect]). Member (Eff2 (FreeArr Echoer2)) r => Sem r ()
+doEcho2 =  send (MkEff2 (Effect DoEcho2) :: Eff2 (FreeArr Echoer2) (Sem r) ()) 
+
+doEcho2A :: forall (r :: [Effect]). Member (Eff2 (FreeArr Echoer2)) r => SemArr r () ()
+doEcho2A =  constSemArr doEcho2
 
 
--- allternaives
-
-klComp :: (forall x . Sem (e ': r) x -> Sem r x) -> SemArr (e ': r) a b -> SemArr r a b 
-klComp comp (Arr.Kleisli fn) = Arr.Kleisli (comp Cat.. fn)
-
-klComp' :: (forall x . Sem r1 x -> Sem r2 x) -> SemArr r1 a b -> SemArr r2 a b 
-klComp' comp (Arr.Kleisli fn) = Arr.Kleisli (comp Cat.. fn)
-
--- not interesting
-interKl
-    :: forall e r a b . FirstOrder (ArrowEff e) "interpret"
-    => (forall x y . e x y -> SemArr r x y)
-       -- ^ A natural transformation from the handled effect to other effects
-       -- already in 'Sem'.
-    -> SemArr (ArrowEff e ': r) a b
-    -> SemArr r a b
-interKl fn = klComp' (interpret fnx)
- where 
-  fnx :: forall y m. (ArrowEff e) m y -> Sem r y
-  fnx (MkArrowEff e) = -- undefined
-                          let kls  = fn e
-                              x = Arr.runKleisli kls undefined
-                          in x -- (MkArrowEff e) = undefined
-
-
-
+-- interpretEcho2 :: Member (Eff2 (FreeArr Teletype2)) r => Sem (Echoer2 ': r) a -> Sem r a
+-- interpretEcho2 = undefined
