@@ -36,6 +36,7 @@ embedEff2 :: Member (Embed m) r => (forall x y . arr x y ->  Arr.Kleisli m x y) 
 embedEff2 = interpretEff2Kl embed
 
 -- | represent arrow and m and interpret it as existing effect
+-- can be used to just reintrpret arrow effects (see Echoer2)
 interpretEff2Kl :: (forall x . m x -> Sem r x) -> (forall x y . arr x y ->  Arr.Kleisli m x y) -> Sem (Eff2 arr ': r) a -> Sem r a
 interpretEff2Kl comp fn = interpret \case
   MkEff2 arr   -> comp (Arr.runKleisli (fn arr) ())
