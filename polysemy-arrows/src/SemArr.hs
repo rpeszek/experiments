@@ -29,7 +29,7 @@ constSemArr c = Arr.Kleisli (const c)
 semArr :: (a -> (Sem r) b )-> SemArr r a b
 semArr = Arr.Kleisli
 
--- |  transform Sem compilation stacks to SemArr comilation stacks.
+-- |  transform @Sem@ compilation stacks to @SemArr@ compilation stacks.
 -- semArrCompl'' :: (forall x . Sem (e ': r) x -> Sem r x) -> SemArr (e ': r) a b -> SemArr r a b 
 -- semArrCompl'' comp (Arr.Kleisli fn) = Arr.Kleisli (comp . fn)
 --

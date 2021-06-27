@@ -8,7 +8,7 @@ import qualified Control.Arrow as Arr
 import Polysemy
 import SemArr  
 
-import Teletype
+import Teletype hiding (interpreter)
 
 
 
@@ -27,6 +27,9 @@ echoA = proc _ -> do
        _ ->  
            writeTTYA -< "You said " <> i
 
+interpreter ::  r ~ '[Teletype, Embed IO] => SemArr r a b -> a -> IO b
+interpreter arr a = runM . teletypeToIO $ Arr.runKleisli arr a
+
 testA :: IO ()
-testA = runM . teletypeToIO $ Arr.runKleisli echoA ()
+testA = interpreter echoA ()
 

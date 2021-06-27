@@ -17,9 +17,29 @@ echo :: Member Teletype r => Sem r ()
 echo = do
   i <- readTTY
   case i of
-    "" -> pure ()
-    _  -> writeTTY i >> echo
+    "" -> writeTTY "Need some input"
+    _  -> writeTTY $ "You said " <> i
 
+-- interpreter
+teletypeToIO :: Member (Embed IO) r => Sem (Teletype ': r) a -> Sem r a
+teletypeToIO = interpret \case
+  ReadTTY      -> embed getLine
+  WriteTTY msg -> embed $ putStrLn msg
+
+interpreter :: r ~ '[Teletype, Embed IO] => Sem r a -> IO a
+interpreter = runM . teletypeToIO
+
+test :: IO ()
+test = interpreter echo
+
+
+
+-- Let's pretend
+echoPure :: [String] -> Sem '[] ([String], ())
+echoPure = flip runTeletypePure echo
+
+pureOutput :: [String] -> [String]
+pureOutput = fst . run . echoPure
 
 runTeletypePure :: [String] -> Sem (Teletype ': r) a -> Sem r ([String], a)
 runTeletypePure i
@@ -32,21 +52,3 @@ runTeletypePure i
   . reinterpret2 \case
       ReadTTY -> maybe "" id <$> input
       WriteTTY msg -> output msg
-
-teletypeToIO :: Member (Embed IO) r => Sem (Teletype ': r) a -> Sem r a
-teletypeToIO = interpret \case
-  ReadTTY      -> embed getLine
-  WriteTTY msg -> embed $ putStrLn msg
-
-
-
--- Let's pretend
-echoPure :: [String] -> Sem '[] ([String], ())
-echoPure = flip runTeletypePure echo
-
-pureOutput :: [String] -> [String]
-pureOutput = fst . run . echoPure
-
--- echo forever
-test :: IO ()
-test = runM . teletypeToIO $ echo

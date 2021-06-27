@@ -19,27 +19,24 @@ import Control.Category
 import qualified Control.Category as Cat
 import Control.Arrow
 
-import FreeArr
+import Eff2Free
 
 
--- h (ArrowMonad h) = (h, ()) >>> Arr.app
-
--- eval :: forall arr1 arr2 m a b . (Arrow arr1, Arrow arr2) => (forall x y . arr1 x y -> arr2 x y) -> Eff2 arr1 m b -> arr2 a b 
--- eval fn (MkEff2 arr1) = undefined
+-- type Effect2 arr r b = Eff2 (Eff2Free arr) r b
 
 -- |
 -- Effect based on Arrow-like two parameter type constructors (i.e. Arrows, Profunctors)
 data Eff2 arr r b where
   MkEff2 :: arr () b -> Eff2 arr r b
 
-embedEff2 :: Member (Embed m) r => (forall x y . arr x y ->  Arr.Kleisli m x y) -> Sem (Eff2 arr ': r) a -> Sem r a
-embedEff2 = interpretEff2Kl embed
-
 -- | represent arrow and m and interpret it as existing effect
 -- can be used to just reintrpret arrow effects (see Echoer2)
-interpretEff2Kl :: (forall x . m x -> Sem r x) -> (forall x y . arr x y ->  Arr.Kleisli m x y) -> Sem (Eff2 arr ': r) a -> Sem r a
-interpretEff2Kl comp fn = interpret \case
+interpretEff2 :: (forall x . m x -> Sem r x) -> (forall x y . arr x y ->  Arr.Kleisli m x y) -> Sem (Eff2 arr ': r) a -> Sem r a
+interpretEff2 comp fn = interpret \case
   MkEff2 arr   -> comp (Arr.runKleisli (fn arr) ())
+
+embedEff2 :: Member (Embed m) r => (forall x y . arr x y ->  Arr.Kleisli m x y) -> Sem (Eff2 arr ': r) a -> Sem r a
+embedEff2 = interpretEff2 embed
 
 
 
@@ -56,7 +53,7 @@ interpretEff2AsSemArr
     -> (forall x y . e x y -> Arr.Kleisli m x y)
     -> SemArr (Eff2 e ': r) a b
     -> SemArr r a b
-interpretEff2AsSemArr comp fn = semArrCompl (interpretEff2Kl comp fn)
+interpretEff2AsSemArr comp fn = semArrCompl (interpretEff2 comp fn)
 
 
 
