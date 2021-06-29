@@ -24,7 +24,7 @@ import Control.Arrow
 import Eff2Free
 import SemArr
 import Eff2
-import Teletype2
+import Teletype2 hiding (interpreter)
 
  
 
@@ -32,7 +32,7 @@ data Echoer2 a b where
   DoEcho2 :: Echoer2 String String
 
 doEcho2 :: forall (r :: [Effect]). Member (Eff2 (Eff2Free Echoer2)) r => String -> Sem r String
-doEcho2 s =  send (MkEff2 (Pure (const s) >>> Effect DoEcho2) :: Eff2 (Eff2Free Echoer2) (Sem r) String) 
+doEcho2 s =  send (MkEff2 (Pure (const s) >>> Effect DoEcho2)) 
 
 doEcho2A :: forall (r :: [Effect]). Member (Eff2 (Eff2Free Echoer2)) r => SemArr r String String
 doEcho2A = semArr doEcho2 
@@ -50,8 +50,8 @@ echoer2ToKl DoEcho2 = proc inp -> do
 echoer2ToTeletype2 :: forall r a . Member (Eff2 (Eff2Free Teletype2)) r => Sem (Eff2 (Eff2Free Echoer2) ': r) a -> Sem r a
 echoer2ToTeletype2 = interpretEff2 id (liftCompKl @ (Sem r) echoer2ToKl)
 
-interpreterEchoer ::  r ~ '[Eff2 (Eff2Free Echoer2), Eff2 (Eff2Free Teletype2), Embed IO] => SemArr r a b -> a -> IO b
-interpreterEchoer arr a = runM . embedEff2 (liftCompKl tele2ToKlIO) . echoer2ToTeletype2 $ Arr.runKleisli arr a
+interpreter ::  r ~ '[Eff2 (Eff2Free Echoer2), Eff2 (Eff2Free Teletype2), Embed IO] => SemArr r a b -> a -> IO b
+interpreter arr a = runM . embedEff2 (liftCompKl tele2ToKlIO) . echoer2ToTeletype2 $ Arr.runKleisli arr a
 
 testEchoerA :: String -> IO String
-testEchoerA  = interpreterEchoer (doEcho2A >>> doEcho2A) 
+testEchoerA  = interpreter (doEcho2A >>> doEcho2A) 

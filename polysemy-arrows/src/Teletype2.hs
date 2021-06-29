@@ -35,13 +35,13 @@ readTTY2A =  constSemArr readTTY2
 
 -- | monad frienly combinator, can be consumed by monadic programs and effects
 readTTY2 :: forall (r :: [Effect]). Member (Eff2 (Eff2Free Teletype2)) r => Sem r String
-readTTY2 =  send (MkEff2 (Effect ReadTTY2) :: Eff2 (Eff2Free Teletype2) (Sem r) String) 
+readTTY2 =  send (MkEff2 (Effect ReadTTY2)) 
 
 writeTTY2A :: forall (r :: [Effect]). Member (Eff2 (Eff2Free Teletype2)) r => SemArr r String ()
 writeTTY2A = semArr writeTTY2
 
 writeTTY2 :: forall (r :: [Effect]). Member (Eff2 (Eff2Free Teletype2)) r => String -> Sem r ()
-writeTTY2 s =  send (MkEff2 (Pure (const s) >>> Effect WriteTTY2) :: Eff2 (Eff2Free Teletype2) (Sem r) ()) 
+writeTTY2 s =  send (MkEff2 (Pure (const s) >>> Effect WriteTTY2)) 
 
 
 echo2A :: Member (Eff2 (Eff2Free Teletype2)) r => SemArr r () ()
