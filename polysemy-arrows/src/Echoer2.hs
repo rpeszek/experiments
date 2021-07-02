@@ -10,13 +10,7 @@ module Echoer2 where
 import qualified Control.Arrow as Arr
 import Polysemy
 import Polysemy.Internal
-import Polysemy.Internal.CustomErrors
-import Polysemy.Input
-import Polysemy.Output    
 
-import Teletype hiding (interpreter)
-
-import Data.Kind
 -- import Control.Category
 -- import qualified Control.Category as Cat
 import Control.Arrow

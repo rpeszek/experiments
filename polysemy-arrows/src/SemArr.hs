@@ -6,10 +6,7 @@ module SemArr where
 
 import qualified Control.Arrow as Arr
 import Polysemy
-import Polysemy.Input
-import Polysemy.Output    
 
-import Teletype
 
 -- | Do not get confused by name Kleisli does not imply monad
 -- in particular:

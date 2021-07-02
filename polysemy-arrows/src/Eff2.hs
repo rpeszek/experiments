@@ -9,17 +9,10 @@ import qualified Control.Arrow as Arr
 import Polysemy
 import Polysemy.Internal
 import Polysemy.Internal.CustomErrors
-import Polysemy.Input
-import Polysemy.Output    
 
-import Teletype
 import SemArr
-import Data.Kind
-import Control.Category
-import qualified Control.Category as Cat
-import Control.Arrow
 
-import Eff2Free
+import Control.Arrow
 
 
 -- type Effect2 arr r b = Eff2 (Eff2Free arr) r b
