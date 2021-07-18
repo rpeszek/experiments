@@ -14,11 +14,13 @@ import           Schemes
 
 type MutableFloat s = STRef s Float
 
-computeProbMutable :: forall a . ProbTree Float a -> ProbTree Float a 
-computeProbMutable tree = runST $ do
-    mutable <- makeMutable tree
-    mutableres <- recursion 1 mutable
-    makeNonMutable mutableres
+computeProbMutable :: forall a . ProbTree NodeProb a -> ProbTree CumulativeProb a 
+computeProbMutable = compWithFloats (
+    \t -> runST $ do
+        mutable <- makeMutable t 
+        mutableres <- recursion 1 mutable
+        makeNonMutable mutableres
+    )
  where 
    recursion :: Float -> ProbTree (MutableFloat s) a -> ST s (ProbTree (MutableFloat s) a)   
    recursion n (Branches mutp l xs)  = do 
@@ -31,14 +33,17 @@ computeProbMutable tree = runST $ do
      modifySTRef mutp (n *)  -- on Leaf there is not much to do, only modify the propability
      return x
 
+-- | Traverse all Tree nodes and replace Float's with `MutableFloat`-s.
 makeMutable :: ProbTree Float a ->  ST s (ProbTree (MutableFloat s) a)
 makeMutable =  
    traverseOf probabilityT (newSTRef @Float)
 
+-- | Traverse all Tree nodes and replace `MutableFloat`-s with not mutable regular `Float`s
 makeNonMutable ::  ProbTree (MutableFloat s) a -> ST s (ProbTree Float a) 
 makeNonMutable = traverseOf probabilityT readSTRef
 
+-- |
 -- >>> tstMutable
 -- "(0.25,\"11\",()),(0.25,\"12\",()),(0.15,\"21\",()),(0.15,\"22\",()),(0.2,\"23\",())"
 tstMutable :: String
-tstMutable = printLeaves . computeProbMutable $ exTree     
+tstMutable = printLeaves $ computeProbMutable exTree     

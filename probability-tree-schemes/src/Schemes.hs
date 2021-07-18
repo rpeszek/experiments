@@ -15,34 +15,60 @@ import           Control.Lens
 
 
 printLeaves :: forall p a. (Show p, Show a) => ProbTree p a -> String
-printLeaves = cata fn
+printLeaves = fold fn
   where
       fn :: ProbTreeF p a String -> String
       fn (LeafF n lb a) = show (n, lb, a)
       fn (BranchesF _ _ xs) = L.intercalate "," xs
 
-computeProb :: ProbTree NodeProb a -> ProbTree CumProb a
-computeProb = ana fn
+-- |
+-- >>> printLeaves . computeProb $ exTree
+-- "(0.25,\"11\",()),(0.25,\"12\",()),(0.15,\"21\",()),(0.15,\"22\",()),(0.2,\"23\",())"
+computeProb' :: ProbTree NodeProb a -> ProbTree CumulativeProb a
+computeProb' = compWithFloats (unfold fn)
   where
-    fn :: Tree a -> TreeF a (Tree a)
-    fn (Branches n a xs) = BranchesF n a (fmap (over probability (* n)) xs)
+    fn :: ProbTree Float a -> ProbTreeF Float a (ProbTree Float a)
+    fn (Branches n l xs) = BranchesF n l (L.map (over probability (* n)) xs)
     fn x = project x
 
--- >>> tst
--- "(0.25,\"11\",\"A\"),(0.25,\"12\",\"B\"),(0.15,\"21\",\"C\"),(0.15,\"22\",\"D\"),(0.2,\"23\",\"E\")"
-tst :: String
-tst = printLeaves . computeProb $ exTree
-
--- since we use Tree a as target, ana or cata are the same. We can fold as well as unfold
-computeProb' :: ProbTree NodeProb a -> ProbTree CumProb a
-computeProb' = cata fn
+-- | since we use Tree a as target, ana or cata are the same. We can fold as well as unfold
+-- >>> printLeaves . computeProb $ exTree
+-- "(0.25,\"11\",()),(0.25,\"12\",()),(0.15,\"21\",()),(0.15,\"22\",()),(0.2,\"23\",())"
+computeProb :: ProbTree NodeProb a -> ProbTree CumulativeProb a
+computeProb = compWithFloats (cata fn)
   where
-      fn :: TreeF a (Tree a) -> Tree a
-      fn (BranchesF n l xs) = Branches n l (fmap (over probability (* n)) xs)
+      fn :: ProbTreeF Float a (ProbTree Float a) -> ProbTree Float a
+      fn (BranchesF n l xs) = Branches n l (L.map (over probability (* n)) xs)
       fn x = embed x
 
-tst' :: String
-tst' = printLeaves . computeProb' $ exTree
 
--- x :: Tree String
--- x = unfold  @ (Tree String) (project @ (Tree String)) exTree
+
+
+
+-- * other examples
+
+
+tstPrintIO :: IO String
+tstPrintIO = printIO exTree
+
+printIO :: forall p a. (Show p, Show a) => ProbTree p a -> IO String
+printIO = fold fn
+  where
+      fn :: ProbTreeF p a (IO String) -> IO String
+      fn (LeafF n lb a) = do 
+          print (n, lb, a) -- as before
+          return $ "done leaf " <> lb
+      fn (BranchesF _ lb ixs) = do
+           xs <- sequence ixs
+           print $ "Processed so far: " ++ show xs
+           return $ "done branch " <> lb
+                            
+printList :: forall a. (Show a) => [a] -> String
+printList = fold fn
+  where
+      fn :: ListF a String -> String
+      fn Nil = ""
+      fn (Cons a str) = show a <> "," <> str
+
+printList' :: forall a. (Show a) => [a] -> String
+printList' = L.foldr (\a str -> show a <> "," <> str) "(START)"       
