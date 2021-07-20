@@ -64,7 +64,7 @@ instance Show CumulativeProb where
 
 -- | Create some illusion of type safety by keeping 
 compWithFloats :: (ProbTree Float a -> ProbTree Float a) -> ProbTree NodeProb a -> ProbTree CumulativeProb a
-compWithFloats fn tree = over probabilityT CumulativeProb $ fn $ over probabilityT unNodeProb tree 
+compWithFloats fn  = over probabilityT CumulativeProb . fn . over probabilityT unNodeProb 
 
 
 
