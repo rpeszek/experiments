@@ -43,6 +43,14 @@ computeProbBad = compWithFloats (cata fn)
       fn (BranchesF n l xs) = Branches n l (L.map (over probability (* n)) xs)
       fn x = embed x
 
+-- >>> printLeaves . computeProbCata $ exTree
+-- "(0.125,\"111\",()),(0.125,\"112\",()),(0.25,\"121\",()),(0.1,\"21\",()),(0.2,\"22\",()),(0.1,\"231\",()),(0.1,\"232\",())"
+computeProbCata :: ProbTree NodeProb a -> ProbTree CumulativeProb a
+computeProbCata = compWithFloats (cata fn)
+  where
+      fn :: ProbTreeF Float a (ProbTree Float a) -> ProbTree Float a
+      fn (BranchesF n l xs) = Branches n l (L.map (probMap (* n)) xs)
+      fn x = embed x
 
 -- >>> printLeaves . computeProb' $ exTree
 -- "(0.125,\"111\",()),(0.125,\"112\",()),(0.25,\"121\",()),(0.1,\"21\",()),(0.2,\"22\",()),(0.1,\"231\",()),(0.1,\"232\",())"
@@ -104,3 +112,5 @@ printList = fold fn
 
 printList' :: forall a. (Show a) => [a] -> String
 printList' = L.foldr (\a str -> show a <> "," <> str) "(START)"
+
+

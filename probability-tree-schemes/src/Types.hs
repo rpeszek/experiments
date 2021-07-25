@@ -33,6 +33,10 @@ data ProbTree p a =
 
 makeBaseFunctor ''ProbTree
 
+probMap :: (p1 -> p2) -> ProbTree p1 a -> ProbTree p2 a
+probMap fn (Leaf p l a) = Leaf (fn p) l a
+probMap fn (Branches p l xs) = Branches (fn p) l $ L.map (probMap fn) xs
+
 deriving instance (Show a, Show p, Show b) => Show (ProbTreeF p a b)
 
 -- | needs to be non-polymorphic because of nesting
@@ -89,8 +93,19 @@ exTree = over probabilityT NodeProb $ Branches 1 "R" [
    ]
  ]
 
-exTree2 :: ProbTree NodeProb ()
-exTree2 =over probabilityT NodeProb $   Branches 1 "R" [
+-- >>> probMap (* 0.5) $ exOneBranch 4
+-- Branches 0.5 "4" [Branches 0.5 "3" [Branches 0.5 "2" [Branches 0.5 "1" [Leaf 0.5 "0" ()]]]]
+-- >>> over probability (* 0.5) $ exOneBranch 4
+-- Branches 0.5 "4" [Branches 1.0 "3" [Branches 1.0 "2" [Branches 1.0 "1" [Leaf 1.0 "0" ()]]]]
+
+-- >>> exOneBranch 4
+-- Branches 1.0 "4" [Branches 1.0 "3" [Branches 1.0 "2" [Branches 1.0 "1" [Leaf 1.0 "0" ()]]]]
+exOneBranch :: Int -> ProbTree Float ()
+exOneBranch 0 =  Leaf 1 "0" ()
+exOneBranch n =  Branches 1 (show n) [exOneBranch (n -1)]
+
+exTreeFl2 :: ProbTree Float ()
+exTreeFl2 =  Branches 1 "R" [
    Branches 0.5 "1" [
        Branches 0.5 "11" [
           Leaf 0.5 "111" ()
