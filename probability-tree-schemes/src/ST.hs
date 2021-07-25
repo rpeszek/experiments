@@ -44,6 +44,6 @@ makeNonMutable = traverseOf probabilityT readSTRef
 
 -- |
 -- >>> tstMutable
--- "(0.25,\"11\",()),(0.25,\"12\",()),(0.15,\"21\",()),(0.15,\"22\",()),(0.2,\"23\",())"
+-- "(0.125,\"111\",()),(0.125,\"112\",()),(0.25,\"121\",()),(0.1,\"21\",()),(0.2,\"22\",()),(0.1,\"231\",()),(0.1,\"232\",())"
 tstMutable :: String
 tstMutable = printLeaves $ computeProbMutable exTree     

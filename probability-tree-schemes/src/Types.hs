@@ -71,12 +71,63 @@ compWithFloats fn  = over probabilityT CumulativeProb . fn . over probabilityT u
 exTree :: ProbTree NodeProb ()
 exTree = over probabilityT NodeProb $ Branches 1 "R" [
    Branches 0.5 "1" [
-      Leaf 0.5 "11" ()
+      Branches 0.5 "11" [
+          Leaf 0.5 "111" ()
+          , Leaf 0.5 "112" ()
+       ]
+       , Branches 0.5 "12" [
+          Leaf 1 "121" ()
+       ]
+   ]
+   , Branches 0.5 "2" [
+      Leaf 0.2 "21" ()
+      , Leaf 0.4 "22" ()
+      , Branches 0.4 "23" [
+          Leaf 0.5 "231" ()
+          , Leaf 0.5 "232" ()
+       ]
+   ]
+ ]
+
+exTree2 :: ProbTree NodeProb ()
+exTree2 =over probabilityT NodeProb $   Branches 1 "R" [
+   Branches 0.5 "1" [
+       Branches 0.5 "11" [
+          Leaf 0.5 "111" ()
+          , Leaf 0.5 "112" ()
+       ]
+
       , Leaf 0.5 "12" ()
    ]
    , Branches 0.5 "2" [
-      Leaf 0.3 "21" ()
+       Branches 0.3 "21" [
+          Leaf 0.5 "211" ()
+          , Leaf 0.5 "212" ()
+       ]
       , Leaf 0.3 "22" ()
       , Leaf 0.4 "23" ()
    ]
- ]
+ ] 
+
+exTree3 :: ProbTree NodeProb ()
+exTree3 =over probabilityT NodeProb $   Branches 1 "R" [
+   Branches 0.5 "1" [
+       Branches 0.5 "11" [
+          Leaf 0.5 "111" ()
+          , Leaf 0.5 "112" ()
+       ]
+
+       , Branches 0.5 "12" [
+          Leaf 0.5 "121" ()
+          , Leaf 0.5 "122" ()
+       ]
+   ]
+  --  , Branches 0.5 "2" [
+  --      Branches 0.3 "21" [
+  --         Leaf 0.5 "211" ()
+  --         , Leaf 0.5 "212" ()
+  --      ]
+  --     , Leaf 0.3 "22" ()
+  --     , Leaf 0.4 "23" ()
+  --  ]
+ ] 
